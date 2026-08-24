@@ -180,6 +180,18 @@ No MVP, o sistema é operado internamente pela padaria (atendente/padeiro).
 Um possível futuro (não confirmado) é o cliente final também acessar para
 consultar status — tratar como fase avançada, não MVP.
 
+> **Nota de intenção futura (ideia distante, não comprometida — registrada
+> em 2026-08-24):** existe interesse em, eventualmente, permitir que o
+> cliente final registre o próprio pedido online, sem intermédio do
+> atendente. Isso **não é um requisito atual** e não deve guiar decisões de
+> escopo dos incrementos em andamento. Mas é relevante o suficiente pra
+> registrar aqui, porque muda premissas que hoje são aceitas sem problema
+> (ex.: "sem autenticação" deixa de ser dívida aceitável se o sistema for
+> exposto à internet; RN02/sinal precisaria de um fluxo que hoje depende do
+> atendente confirmar manualmente). Quando/se isso virar prioridade real,
+> volta pra seção 11 como decisão a confirmar — não deve ser assumido nem
+> comprometido a partir desta nota.
+
 ## 5. Requisitos funcionais (RF)
 
 Numeração preservada do levantamento original — use esses IDs em commits,
