@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Padaria do Passoca — Encomendas</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<header>
+  <h1>🥐 Padaria do Passoca</h1>
+  <p>sistema de encomendas</p>
+  <nav>
+    <a class="tab active" href="/">Clientes</a>
+    <span class="tab disabled" title="Em breve">Novo Pedido</span>
+    <span class="tab disabled" title="Em breve">Pedidos</span>
+  </nav>
+</header>
+
+<main>
+  <div class="card">
+    <h2>Cadastro de Cliente</h2>
+    <p class="sub">Registre os dados de quem vai encomendar.</p>
+
+    <form id="form-cliente" novalidate>
+      <div class="row">
+        <div>
+          <label for="c-nome">Nome do cliente</label>
+          <input id="c-nome" name="nome" type="text" placeholder="Ex: Maria Silva" autocomplete="name">
+        </div>
+        <div>
+          <label for="c-telefone">Telefone</label>
+          <input id="c-telefone" name="telefone" type="tel" placeholder="(43) 9 9999-9999" autocomplete="tel">
+        </div>
+      </div>
+      <button type="submit" class="action" id="botao-salvar-cliente">Salvar Cliente</button>
+      <p id="feedback-cliente" class="feedback" role="status" hidden></p>
+    </form>
+  </div>
+
+  <div class="card">
+    <h2>Clientes cadastrados</h2>
+    <div id="lista-clientes" class="chip-list"></div>
+  </div>
+</main>
+
+<footer>Padaria do Passoca — Incremento 5</footer>
+
+<script src="/js/ui.js"></script>
+<script src="/js/api.js"></script>
+<script src="/js/cadastro-cliente.js"></script>
+</body>
+</html>

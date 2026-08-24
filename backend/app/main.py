@@ -8,11 +8,16 @@ para a ressalva sobre expor isso à internet no futuro.
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.api import clientes, pedidos, produtos
+
+# backend/app/main.py -> sobe 3 níveis até a raiz do repo, onde fica /frontend.
+FRONTEND_DIR = Path(__file__).resolve().parent.parent.parent / "frontend"
 
 logger = logging.getLogger("passoca")
 
@@ -34,6 +39,20 @@ app.include_router(pedidos.router)
 def health_check() -> dict[str, str]:
     """Verificação simples de que a API está no ar."""
     return {"status": "ok"}
+
+
+# Frontend estático (HTML/CSS/JS puro, CLAUDE.md seção 11) servido pelo
+# mesmo processo da API — sem CORS a configurar, um único comando
+# (`uvicorn app.main:app`) sobe o sistema inteiro (RNF04). Montado por
+# último: rotas de API declaradas acima continuam tendo prioridade sobre
+# este catch-all de arquivos estáticos.
+if FRONTEND_DIR.is_dir():
+    app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")
+else:
+    logger.warning(
+        "Diretório de frontend não encontrado em %s — servindo só a API.",
+        FRONTEND_DIR,
+    )
 
 
 @app.exception_handler(Exception)

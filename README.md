@@ -20,9 +20,12 @@ entrega.
 🚧 Em desenvolvimento — **Incremento 1 concluído** (schema + migrations +
 testes), **Incremento 2 concluído** (API REST de Cliente e Produto — RF01,
 RF02), **Incremento 3 concluído** (registro de pedido — RF03, RF04 — com
-RN01 aplicada no backend) e **Incremento 4 concluído** (ciclo de vida do
+RN01 aplicada no backend), **Incremento 4 concluído** (ciclo de vida do
 pedido — RF06 cancelar, RF07 listar por período, com RN02, RN03 e RN04
-aplicadas no backend). RF01-RF07 do levantamento original estão completos.
+aplicadas no backend) e **Incremento 5 concluído** (frontend — infraestrutura
+mínima e tela de cadastro de cliente, RF01). RF01-RF07 do levantamento
+original estão completos no backend; o frontend cobre RF01 até aqui — telas
+de novo pedido e lista de pedidos ficam para os Incrementos 6 e 7.
 
 Autenticação/login por perfil está deliberadamente fora do MVP (ver backlog
 no `CLAUDE.md`, seção 5 e 13). O sistema roda hoje sem autenticação, para
@@ -51,10 +54,17 @@ Passoca_Padaria/
 │   ├── pytest.ini
 │   ├── requirements.txt
 │   └── requirements-dev.txt
-├── frontend/              # ainda vazio — Fase 3
+├── frontend/
+│   ├── index.html         # tela de cadastro de cliente (RF01)
+│   ├── css/style.css      # estilo compartilhado entre telas
+│   └── js/                # api.js (cliente HTTP), ui.js (feedback visual), cadastro-cliente.js
 ├── docs/referencia-prototipo/  # protótipo HTML original, só como referência de UX
 └── CLAUDE.md
 ```
+
+O frontend é servido pelo próprio backend (`StaticFiles` montado em `/` no
+FastAPI — ver `backend/app/main.py`) — não precisa de um segundo servidor
+nem de configurar CORS. `uvicorn app.main:app` sobe a API e a UI juntos.
 
 ## Rodando localmente
 
@@ -71,14 +81,14 @@ alembic upgrade head               # cria o banco SQLite (app.db) com o schema a
 
 pytest -v                          # roda a suite de testes
 
-uvicorn app.main:app --reload      # sobe a API em http://127.0.0.1:8000
+uvicorn app.main:app --reload      # sobe a API + frontend em http://127.0.0.1:8000
 ```
 
 Isso cria o schema completo (`clientes`, `produtos`, `pedidos`,
 `itens_pedido`) no arquivo `backend/app.db` (ignorado pelo git) e roda os
-79 testes automatizados (schema + API + service de pedidos). Com a API no
-ar, a documentação interativa (Swagger) fica disponível em
-`http://127.0.0.1:8000/docs`.
+79 testes automatizados (schema + API + service de pedidos). Com o servidor
+no ar: a tela de cadastro de cliente fica em `http://127.0.0.1:8000/` e a
+documentação interativa (Swagger) em `http://127.0.0.1:8000/docs`.
 
 ## Endpoints disponíveis
 

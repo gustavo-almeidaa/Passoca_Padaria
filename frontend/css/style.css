@@ -1,0 +1,202 @@
+/*
+ * Estilo compartilhado — Padaria do Passoca.
+ *
+ * Paleta e tipografia reaproveitadas do protótipo de referência
+ * (docs/referencia-prototipo/padaria_do_passoca_v1.html — CLAUDE.md, seção
+ * 10: usar como referência de fluxo/nomenclatura, não de arquitetura; o CSS
+ * em si foi reescrito do zero para as classes usadas aqui).
+ */
+@import url('https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&family=Karla:wght@400;500;600;700&display=swap');
+
+:root {
+  --cream: #F4ECDA;
+  --wood: #2E2117;
+  --wood-light: #4A3626;
+  --crust: #8B4A2B;
+  --red: #B23A2E;
+  --gold: #D9A441;
+  --paper: #FBF6EB;
+  --ink: #3A2E22;
+  --ink-soft: #6b5b48;
+  --green: #5C7A4E;
+  --border: #DCCBAE;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  background: var(--cream);
+  font-family: 'Karla', -apple-system, Segoe UI, sans-serif;
+  color: var(--ink);
+  min-height: 100vh;
+}
+
+header {
+  background: linear-gradient(180deg, var(--wood-light), var(--wood));
+  padding: 24px 20px 0;
+  text-align: center;
+  border-bottom: 6px solid var(--gold);
+}
+header h1 {
+  font-family: 'Kalam', cursive;
+  color: var(--paper);
+  font-size: 2.2rem;
+  margin: 0;
+}
+header p {
+  color: var(--gold);
+  font-family: 'Kalam', cursive;
+  font-size: 1rem;
+  margin: 4px 0 18px;
+}
+
+nav {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+}
+nav .tab {
+  font-family: 'Kalam', cursive;
+  font-size: 1rem;
+  background: var(--paper);
+  color: var(--wood);
+  border: none;
+  padding: 10px 20px 12px;
+  border-radius: 8px 8px 0 0;
+  text-decoration: none;
+  display: inline-block;
+  position: relative;
+  top: 2px;
+}
+nav .tab.active {
+  background: var(--cream);
+  color: var(--red);
+  font-weight: 700;
+  box-shadow: 0 -3px 0 var(--gold) inset;
+}
+nav .tab.disabled {
+  background: rgba(251, 246, 235, 0.35);
+  color: rgba(251, 246, 235, 0.6);
+  cursor: default;
+}
+
+main {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 30px 18px 60px;
+}
+
+.card {
+  background: var(--paper);
+  border-radius: 10px;
+  padding: 24px 26px;
+  box-shadow: 0 6px 18px rgba(46, 33, 23, 0.12);
+  border: 1px solid rgba(139, 74, 43, 0.15);
+  margin-bottom: 22px;
+}
+.card h2 {
+  font-family: 'Kalam', cursive;
+  color: var(--crust);
+  font-size: 1.4rem;
+  margin: 0 0 6px;
+}
+.card .sub {
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+  margin: 0 0 18px;
+}
+
+label {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: var(--ink-soft);
+  margin-bottom: 5px;
+  margin-top: 14px;
+}
+input {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 6px;
+  border: 1.5px solid var(--border);
+  background: #fff;
+  font-family: 'Karla', sans-serif;
+  font-size: 0.98rem;
+  color: var(--ink);
+}
+input:focus {
+  outline: none;
+  border-color: var(--crust);
+}
+
+.row { display: flex; gap: 16px; }
+.row > div { flex: 1; }
+
+button.action {
+  font-family: 'Kalam', cursive;
+  font-size: 1.02rem;
+  background: var(--crust);
+  color: #fff;
+  border: none;
+  padding: 11px 22px;
+  border-radius: 7px;
+  cursor: pointer;
+  margin-top: 18px;
+  box-shadow: 0 3px 0 #6a3720;
+}
+button.action:active { transform: translateY(2px); box-shadow: 0 1px 0 #6a3720; }
+button.action:disabled {
+  background: #c9c0af;
+  box-shadow: none;
+  cursor: not-allowed;
+  transform: none;
+}
+button.action:focus-visible { outline: 3px solid var(--green); outline-offset: 2px; }
+
+.feedback {
+  margin-top: 14px;
+  padding: 10px 14px;
+  border-radius: 6px;
+  font-size: 0.9rem;
+}
+.feedback--sucesso { background: #E4EEDD; color: var(--green); border: 1px solid var(--green); }
+.feedback--erro { background: #F6E3E0; color: var(--red); border: 1px solid var(--red); }
+.feedback[hidden] { display: none; }
+
+.empty {
+  text-align: center;
+  color: var(--ink-soft);
+  font-family: 'Kalam', cursive;
+  font-size: 1.05rem;
+  padding: 24px 10px;
+  border: 2px dashed var(--border);
+  border-radius: 8px;
+  margin: 0;
+}
+
+.chip-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.chip {
+  background: #fff;
+  border: 1.5px solid var(--gold);
+  color: var(--wood);
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 0.88rem;
+}
+.chip b { color: var(--crust); }
+
+footer {
+  text-align: center;
+  color: var(--ink-soft);
+  font-size: 0.8rem;
+  padding: 20px;
+}
+
+@media (max-width: 560px) {
+  .row { flex-direction: column; }
+  header h1 { font-size: 1.8rem; }
+}
