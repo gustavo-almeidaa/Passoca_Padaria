@@ -12,21 +12,22 @@ import logging
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
-from app.api import clientes, produtos
+from app.api import clientes, pedidos, produtos
 
 logger = logging.getLogger("passoca")
 
 app = FastAPI(
     title="Padaria do Passoca — API",
     description=(
-        "API interna para cadastro de clientes, produtos e (a partir do "
-        "Incremento 3) pedidos."
+        "API interna para cadastro de clientes, produtos e registro de "
+        "pedidos (RF01-RF04)."
     ),
-    version="0.2.0",
+    version="0.3.0",
 )
 
 app.include_router(clientes.router)
 app.include_router(produtos.router)
+app.include_router(pedidos.router)
 
 
 @app.get("/health", tags=["infra"])

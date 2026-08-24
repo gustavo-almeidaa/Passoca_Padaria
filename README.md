@@ -18,9 +18,11 @@ entrega.
 ## Status do projeto
 
 🚧 Em desenvolvimento — **Incremento 1 concluído** (schema + migrations +
-testes) e **Incremento 2 concluído** (API REST de Cliente e Produto — RF01,
-RF02). Endpoints de Pedido (RF03–RF07) e as regras de negócio RN01–RN04
-ainda não existem — isso é o Incremento 3.
+testes), **Incremento 2 concluído** (API REST de Cliente e Produto — RF01,
+RF02) e **Incremento 3 concluído** (registro de pedido — RF03, RF04 — com
+RN01 aplicada no backend). RF05 completo (listagem), RF06 (cancelar, RN03),
+RF07 (listar por período) e RN02/RN04 (sinal e máquina de estados) ainda não
+existem — isso é o Incremento 4.
 
 Autenticação/login por perfil está deliberadamente fora do MVP (ver backlog
 no `CLAUDE.md`, seção 5 e 13). O sistema roda hoje sem autenticação, para
@@ -37,9 +39,9 @@ Passoca_Padaria/
 ├── backend/
 │   ├── app/
 │   │   ├── models/       # modelos SQLAlchemy (Cliente, Produto, Pedido, ItemPedido)
-│   │   ├── schemas/      # schemas Pydantic — Cliente e Produto (Incremento 2)
-│   │   ├── services/     # regras de negócio RN01-RN04 (ainda vazio — Incremento 3)
-│   │   ├── api/          # rotas FastAPI — /clientes e /produtos (Incremento 2)
+│   │   ├── schemas/      # schemas Pydantic — Cliente, Produto e Pedido
+│   │   ├── services/     # regras de negócio — RN01 (Incremento 3); RN02-RN04 no Incremento 4
+│   │   ├── api/          # rotas FastAPI — /clientes, /produtos e /pedidos
 │   │   ├── main.py       # ponto de entrada da API (app FastAPI)
 │   │   └── core/         # config (settings) e conexão com banco
 │   ├── migrations/       # Alembic — histórico de mudanças de schema
@@ -74,10 +76,11 @@ uvicorn app.main:app --reload      # sobe a API em http://127.0.0.1:8000
 
 Isso cria o schema completo (`clientes`, `produtos`, `pedidos`,
 `itens_pedido`) no arquivo `backend/app.db` (ignorado pelo git) e roda os
-27 testes automatizados (schema + API). Com a API no ar, a documentação
-interativa (Swagger) fica disponível em `http://127.0.0.1:8000/docs`.
+44 testes automatizados (schema + API + service de pedidos). Com a API no
+ar, a documentação interativa (Swagger) fica disponível em
+`http://127.0.0.1:8000/docs`.
 
-## Endpoints disponíveis (Incremento 2)
+## Endpoints disponíveis
 
 | Método | Rota | Descrição |
 |---|---|---|
@@ -88,6 +91,8 @@ interativa (Swagger) fica disponível em `http://127.0.0.1:8000/docs`.
 | `POST` | `/produtos` | Cadastrar produto (RF02) |
 | `GET` | `/produtos?ativo=true` | Listar produtos (filtro opcional por ativo) |
 | `GET` | `/produtos/{id}` | Consultar um produto |
+| `POST` | `/pedidos` | Registrar pedido (RF03, RF04) — aplica RN01 |
+| `GET` | `/pedidos/{id}` | Consultar um pedido, com seus itens |
 
 ## Regras de negócio principais
 

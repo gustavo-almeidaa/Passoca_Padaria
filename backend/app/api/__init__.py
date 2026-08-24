@@ -1,4 +1,4 @@
 """Ponto único de importação dos routers da API."""
-from app.api import clientes, produtos
+from app.api import clientes, pedidos, produtos
 
-__all__ = ["clientes", "produtos"]
+__all__ = ["clientes", "produtos", "pedidos"]
