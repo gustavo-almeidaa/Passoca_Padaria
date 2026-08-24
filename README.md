@@ -18,7 +18,9 @@ entrega.
 ## Status do projeto
 
 🚧 Em desenvolvimento — **Incremento 1 concluído** (schema + migrations +
-testes). Ainda não há endpoints de API — isso é o Incremento 2.
+testes) e **Incremento 2 concluído** (API REST de Cliente e Produto — RF01,
+RF02). Endpoints de Pedido (RF03–RF07) e as regras de negócio RN01–RN04
+ainda não existem — isso é o Incremento 3.
 
 Autenticação/login por perfil está deliberadamente fora do MVP (ver backlog
 no `CLAUDE.md`, seção 5 e 13). O sistema roda hoje sem autenticação, para
@@ -35,9 +37,10 @@ Passoca_Padaria/
 ├── backend/
 │   ├── app/
 │   │   ├── models/       # modelos SQLAlchemy (Cliente, Produto, Pedido, ItemPedido)
-│   │   ├── schemas/      # schemas Pydantic (ainda vazio — Incremento 2)
-│   │   ├── services/     # regras de negócio RN01-RN04 (ainda vazio — Incremento 2)
-│   │   ├── api/          # rotas/endpoints FastAPI (ainda vazio — Incremento 2)
+│   │   ├── schemas/      # schemas Pydantic — Cliente e Produto (Incremento 2)
+│   │   ├── services/     # regras de negócio RN01-RN04 (ainda vazio — Incremento 3)
+│   │   ├── api/          # rotas FastAPI — /clientes e /produtos (Incremento 2)
+│   │   ├── main.py       # ponto de entrada da API (app FastAPI)
 │   │   └── core/         # config (settings) e conexão com banco
 │   ├── migrations/       # Alembic — histórico de mudanças de schema
 │   ├── tests/            # pytest
@@ -65,11 +68,26 @@ cp .env.example .env               # ajuste se necessário
 alembic upgrade head               # cria o banco SQLite (app.db) com o schema atual
 
 pytest -v                          # roda a suite de testes
+
+uvicorn app.main:app --reload      # sobe a API em http://127.0.0.1:8000
 ```
 
 Isso cria o schema completo (`clientes`, `produtos`, `pedidos`,
 `itens_pedido`) no arquivo `backend/app.db` (ignorado pelo git) e roda os
-15 testes automatizados do schema.
+27 testes automatizados (schema + API). Com a API no ar, a documentação
+interativa (Swagger) fica disponível em `http://127.0.0.1:8000/docs`.
+
+## Endpoints disponíveis (Incremento 2)
+
+| Método | Rota | Descrição |
+|---|---|---|
+| `GET` | `/health` | Verificação de saúde da API |
+| `POST` | `/clientes` | Cadastrar cliente (RF01) |
+| `GET` | `/clientes` | Listar clientes |
+| `GET` | `/clientes/{id}` | Consultar um cliente |
+| `POST` | `/produtos` | Cadastrar produto (RF02) |
+| `GET` | `/produtos?ativo=true` | Listar produtos (filtro opcional por ativo) |
+| `GET` | `/produtos/{id}` | Consultar um produto |
 
 ## Regras de negócio principais
 

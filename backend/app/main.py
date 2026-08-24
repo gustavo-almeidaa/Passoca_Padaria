@@ -1,0 +1,53 @@
+"""
+Ponto de entrada da API — Padaria do Passoca.
+
+Sem autenticação (decisão registrada em CLAUDE.md, seção 11): o sistema roda
+hoje na rede interna da padaria. Ver CLAUDE.md, seção 4, nota de 2026-08-24,
+para a ressalva sobre expor isso à internet no futuro.
+"""
+from __future__ import annotations
+
+import logging
+
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
+
+from app.api import clientes, produtos
+
+logger = logging.getLogger("passoca")
+
+app = FastAPI(
+    title="Padaria do Passoca — API",
+    description=(
+        "API interna para cadastro de clientes, produtos e (a partir do "
+        "Incremento 3) pedidos."
+    ),
+    version="0.2.0",
+)
+
+app.include_router(clientes.router)
+app.include_router(produtos.router)
+
+
+@app.get("/health", tags=["infra"])
+def health_check() -> dict[str, str]:
+    """Verificação simples de que a API está no ar."""
+    return {"status": "ok"}
+
+
+@app.exception_handler(Exception)
+async def erro_interno_handler(request: Request, exc: Exception) -> JSONResponse:
+    """
+    Rede de segurança para qualquer erro não tratado explicitamente.
+
+    Loga o detalhe completo internamente (stack trace incluído) e devolve
+    ao cliente só uma mensagem genérica — nunca stack trace, nome de
+    tabela/coluna, ou qualquer detalhe interno (CLAUDE.md, seção 1.4).
+    """
+    logger.exception(
+        "Erro não tratado ao processar %s %s", request.method, request.url
+    )
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Erro interno. Tente novamente em instantes."},
+    )
