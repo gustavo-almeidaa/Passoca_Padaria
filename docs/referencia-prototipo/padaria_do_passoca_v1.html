@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Padaria do Passoca — Sistema de Encomendas</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&family=Karla:wght@400;500;600;700&display=swap');
+
+  :root{
+    --cream:#F4ECDA;
+    --wood:#2E2117;
+    --wood-light:#4A3626;
+    --crust:#8B4A2B;
+    --red:#B23A2E;
+    --gold:#D9A441;
+    --paper:#FBF6EB;
+    --ink:#3A2E22;
+    --ink-soft:#6b5b48;
+    --green:#5C7A4E;
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--cream);
+    background-image:
+      radial-gradient(circle at 1px 1px, rgba(139,74,43,0.07) 1px, transparent 0);
+    background-size: 22px 22px;
+    font-family:'Karla', sans-serif;
+    color:var(--ink);
+    min-height:100vh;
+  }
+
+  /* ---------- HEADER ---------- */
+  header{
+    background:
+      linear-gradient(180deg, var(--wood-light), var(--wood));
+    padding:28px 20px 0;
+    text-align:center;
+    border-bottom: 6px solid var(--gold);
+    position:relative;
+  }
+  header::after{
+    content:"";
+    position:absolute; left:0; right:0; bottom:-6px; height:6px;
+    background: repeating-linear-gradient(90deg, var(--red) 0 14px, var(--paper) 14px 28px);
+  }
+  header h1{
+    font-family:'Kalam', cursive;
+    color: var(--paper);
+    font-size: 2.6rem;
+    margin: 0;
+    letter-spacing: 0.5px;
+    text-shadow: 0 2px 0 rgba(0,0,0,0.25);
+  }
+  header p{
+    color: var(--gold);
+    font-family:'Kalam', cursive;
+    font-size:1.05rem;
+    margin: 4px 0 20px;
+  }
+
+  nav{
+    display:flex;
+    justify-content:center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 18px;
+  }
+  nav button{
+    font-family:'Kalam', cursive;
+    font-size: 1.05rem;
+    background: var(--paper);
+    color: var(--wood);
+    border: none;
+    padding: 10px 22px 12px;
+    border-radius: 8px 8px 0 0;
+    cursor:pointer;
+    position:relative;
+    top: 2px;
+    box-shadow: 0 -2px 0 rgba(0,0,0,0.06) inset;
+    transition: transform .15s ease, background .15s ease;
+  }
+  nav button:hover{ transform: translateY(-2px); }
+  nav button.active{
+    background: var(--cream);
+    color: var(--red);
+    font-weight:700;
+    box-shadow: 0 -3px 0 var(--gold) inset;
+  }
+
+  main{
+    max-width: 880px;
+    margin: 0 auto;
+    padding: 34px 18px 60px;
+  }
+
+  .screen{ display:none; animation: fade .25s ease; }
+  .screen.active{ display:block; }
+  @keyframes fade{ from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:translateY(0);} }
+
+  .card{
+    background: var(--paper);
+    border-radius: 10px;
+    padding: 26px 28px;
+    box-shadow: 0 6px 18px rgba(46,33,23,0.12);
+    border: 1px solid rgba(139,74,43,0.15);
+    margin-bottom: 22px;
+  }
+
+  .card h2{
+    font-family:'Kalam', cursive;
+    color: var(--crust);
+    font-size: 1.5rem;
+    margin: 0 0 6px;
+  }
+  .card .sub{
+    color: var(--ink-soft);
+    font-size: 0.92rem;
+    margin: 0 0 20px;
+  }
+
+  label{
+    display:block;
+    font-size: 0.82rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: var(--ink-soft);
+    margin-bottom: 5px;
+    margin-top: 14px;
+  }
+  input, select{
+    width:100%;
+    padding: 10px 12px;
+    border-radius: 6px;
+    border: 1.5px solid #DCCBAE;
+    background: #fff;
+    font-family:'Karla', sans-serif;
+    font-size: 0.98rem;
+    color: var(--ink);
+  }
+  input:focus, select:focus{
+    outline: none;
+    border-color: var(--crust);
+  }
+
+  .row{ display:flex; gap: 16px; }
+  .row > div{ flex:1; }
+
+  button.action{
+    font-family:'Kalam', cursive;
+    font-size: 1.05rem;
+    background: var(--crust);
+    color: #fff;
+    border:none;
+    padding: 11px 22px;
+    border-radius: 7px;
+    cursor:pointer;
+    margin-top: 20px;
+    box-shadow: 0 3px 0 #6a3720;
+    transition: transform .1s ease;
+  }
+  button.action:active{ transform: translateY(2px); box-shadow: 0 1px 0 #6a3720; }
+  button.action.secondary{
+    background: var(--gold);
+    box-shadow: 0 3px 0 #a97c26;
+    color: var(--wood);
+  }
+  button.action.ghost{
+    background: transparent;
+    color: var(--crust);
+    box-shadow: none;
+    border: 1.5px dashed var(--crust);
+  }
+  button.action:focus-visible{ outline: 3px solid var(--green); outline-offset: 2px; }
+
+  .empty{
+    text-align:center;
+    color: var(--ink-soft);
+    font-family:'Kalam', cursive;
+    font-size: 1.1rem;
+    padding: 30px 10px;
+    border: 2px dashed #DCCBAE;
+    border-radius: 8px;
+  }
+
+  /* chips for cliente list */
+  .chip-list{ display:flex; flex-wrap:wrap; gap:8px; margin-top: 14px; }
+  .chip{
+    background: #fff;
+    border: 1.5px solid var(--gold);
+    color: var(--wood);
+    padding: 6px 14px;
+    border-radius: 999px;
+    font-size: 0.88rem;
+  }
+  .chip b{ color: var(--crust); }
+
+  /* item list on novo pedido */
+  .item-list{ margin-top: 14px; }
+  .item-row{
+    display:flex; justify-content:space-between; align-items:center;
+    background:#fff; border:1px solid #ECE0C8; border-radius:6px;
+    padding: 9px 14px; margin-bottom: 7px; font-size: 0.94rem;
+  }
+  .item-row button{
+    background:none; border:none; color:var(--red); cursor:pointer; font-size:1.05rem;
+  }
+
+  /* ---------- TICKETS (pedidos) ---------- */
+  .ticket{
+    background:#fff;
+    border-radius: 8px;
+    margin-bottom: 18px;
+    box-shadow: 0 4px 12px rgba(46,33,23,0.1);
+    overflow:hidden;
+    border: 1px solid #ECE0C8;
+  }
+  .ticket-top{
+    display:flex; justify-content:space-between; align-items:center;
+    padding: 14px 18px;
+    background: repeating-linear-gradient(135deg, #fff 0 10px, #FAF4E6 10px 20px);
+    border-bottom: 2px dashed #DCCBAE;
+  }
+  .ticket-top .cliente{
+    font-family:'Kalam', cursive;
+    font-size: 1.2rem;
+    color: var(--wood);
+  }
+  .ticket-top .num{ color: var(--ink-soft); font-size: 0.8rem; }
+
+  .badge{
+    font-size: 0.75rem;
+    font-weight:700;
+    text-transform: uppercase;
+    letter-spacing: .03em;
+    padding: 5px 12px;
+    border-radius: 999px;
+    color:#fff;
+    white-space:nowrap;
+  }
+  .badge.Recebido{ background: var(--gold); color: var(--wood); }
+  .badge.Em-producao{ background: var(--crust); }
+  .badge.Pronto{ background: var(--green); }
+  .badge.Entregue{ background: #7d7568; }
+  .badge.Cancelado{ background: var(--red); }
+
+  .ticket-body{ padding: 14px 18px 18px; }
+  .ticket-body .itens{ font-size: 0.94rem; color: var(--ink); margin-bottom: 8px; }
+  .ticket-body .itens span{ display:block; padding: 2px 0; }
+  .ticket-body .meta{ font-size: 0.85rem; color: var(--ink-soft); margin-bottom: 12px; }
+  .ticket-actions{ display:flex; gap:8px; flex-wrap:wrap; }
+  .ticket-actions button{
+    font-family:'Karla', sans-serif;
+    font-size: 0.82rem;
+    font-weight:600;
+    border-radius: 6px;
+    padding: 7px 13px;
+    border: none;
+    cursor:pointer;
+  }
+  .btn-avancar{ background: var(--wood); color:#fff; }
+  .btn-cancelar{ background: transparent; color: var(--red); border: 1.5px solid var(--red) !important; }
+  .btn-avancar:disabled{ background:#c9c0af; cursor:not-allowed; }
+
+  footer{
+    text-align:center;
+    color: var(--ink-soft);
+    font-size: 0.8rem;
+    padding: 20px;
+  }
+
+  @media (max-width:560px){
+    .row{ flex-direction:column; }
+    header h1{ font-size: 2rem; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🥐 Padaria do Passoca</h1>
+  <p>sistema de encomendas — protótipo funcional</p>
+  <nav>
+    <button class="tab active" data-screen="clientes">Clientes</button>
+    <button class="tab" data-screen="pedido">Novo Pedido</button>
+    <button class="tab" data-screen="pedidos">Pedidos</button>
+  </nav>
+</header>
+
+<main>
+
+  <!-- ===================== TELA 1: CADASTRO DE CLIENTE ===================== -->
+  <section id="clientes" class="screen active">
+    <div class="card">
+      <h2>Cadastro de Cliente</h2>
+      <p class="sub">RF01 — registre os dados de quem vai encomendar.</p>
+
+      <div class="row">
+        <div>
+          <label for="c-nome">Nome do cliente</label>
+          <input id="c-nome" type="text" placeholder="Ex: Maria Silva">
+        </div>
+        <div>
+          <label for="c-telefone">Telefone</label>
+          <input id="c-telefone" type="text" placeholder="(43) 9 9999-9999">
+        </div>
+      </div>
+      <button class="action" onclick="salvarCliente()">Salvar Cliente</button>
+    </div>
+
+    <div class="card">
+      <h2>Clientes cadastrados</h2>
+      <div id="lista-clientes" class="chip-list"></div>
+    </div>
+  </section>
+
+  <!-- ===================== TELA 2: NOVO PEDIDO ===================== -->
+  <section id="pedido" class="screen">
+    <div class="card">
+      <h2>Novo Pedido</h2>
+      <p class="sub">RF03 / RF04 — monte a encomenda e defina a entrega.</p>
+
+      <label for="p-cliente">Cliente</label>
+      <select id="p-cliente"></select>
+
+      <div class="row">
+        <div>
+          <label for="p-produto">Produto</label>
+          <select id="p-produto">
+            <option>Pão francês (kg)</option>
+            <option>Pão de hamburguer (unidade)</option>
+            <option>Bolo de chocolate</option>
+            <option>Bolo personalizado (festa)</option>
+            <option>Salgados (cento)</option>
+            <option>Pão de queijo (dúzia)</option>
+            <option>Rosca doce(unidade)</option>
+          </select>
+        </div>
+        <div>
+          <label for="p-qtd">Quantidade</label>
+          <input id="p-qtd" type="number" min="1" value="1">
+        </div>
+      </div>
+
+      <div class="row">
+        <div>
+          <label for="p-data">Data de entrega</label>
+          <input id="p-data" type="date">
+        </div>
+        <div>
+          <label for="p-hora">Horário</label>
+          <input id="p-hora" type="time">
+        </div>
+      </div>
+
+      <button class="action secondary" onclick="adicionarItem()">+ Adicionar item ao pedido</button>
+
+      <div class="item-list" id="lista-itens"></div>
+
+      <button class="action" onclick="confirmarPedido()">Confirmar Pedido</button>
+    </div>
+  </section>
+
+  <!-- ===================== TELA 3: LISTA DE PEDIDOS ===================== -->
+  <section id="pedidos" class="screen">
+    <div class="card" style="box-shadow:none; background:transparent; border:none; padding:0 0 6px;">
+      <h2 style="margin-bottom:2px;">Pedidos</h2>
+      <p class="sub">RF05 / RF06 / RF07 — acompanhe e atualize o status das encomendas.</p>
+    </div>
+    <div id="lista-pedidos"></div>
+  </section>
+
+</main>
+
+<footer>Padaria do Passoca — protótipo do Incremento 1 · Engenharia de Software, Modelo Incremental</footer>
+
+<script>
+  // ---------- estado em memória (sem localStorage) ----------
+  let clientes = [];
+  let pedidos = [];
+  let itensPedidoAtual = [];
+  let proximoIdCliente = 1;
+  let proximoIdPedido = 1;
+
+  const STATUS_FLOW = ["Recebido", "Em produção", "Pronto", "Entregue"];
+
+  // ---------- navegação entre telas ----------
+  document.querySelectorAll('nav .tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('nav .tab').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById(btn.dataset.screen).classList.add('active');
+      if (btn.dataset.screen === 'pedido') atualizarSelectClientes();
+    });
+  });
+
+  // ---------- clientes ----------
+  function salvarCliente(){
+    const nome = document.getElementById('c-nome').value.trim();
+    const telefone = document.getElementById('c-telefone').value.trim();
+    if(!nome || !telefone){
+      alert('Preencha nome e telefone do cliente.');
+      return;
+    }
+    clientes.push({ id: proximoIdCliente++, nome, telefone });
+    document.getElementById('c-nome').value = '';
+    document.getElementById('c-telefone').value = '';
+    renderClientes();
+  }
+
+  function renderClientes(){
+    const box = document.getElementById('lista-clientes');
+    if(clientes.length === 0){
+      box.innerHTML = '<div class="empty">Nenhum cliente cadastrado ainda.</div>';
+      return;
+    }
+    box.innerHTML = clientes.map(c =>
+      `<span class="chip"><b>${c.nome}</b> · ${c.telefone}</span>`
+    ).join('');
+  }
+
+  function atualizarSelectClientes(){
+    const sel = document.getElementById('p-cliente');
+    if(clientes.length === 0){
+      sel.innerHTML = '<option value="">Cadastre um cliente primeiro</option>';
+      return;
+    }
+    sel.innerHTML = clientes.map(c => `<option value="${c.id}">${c.nome}</option>`).join('');
+  }
+
+  // ---------- montagem do pedido ----------
+  function adicionarItem(){
+    const produto = document.getElementById('p-produto').value;
+    const qtd = parseInt(document.getElementById('p-qtd').value) || 1;
+    itensPedidoAtual.push({ produto, qtd });
+    renderItens();
+  }
+
+  function removerItem(idx){
+    itensPedidoAtual.splice(idx, 1);
+    renderItens();
+  }
+
+  function renderItens(){
+    const box = document.getElementById('lista-itens');
+    if(itensPedidoAtual.length === 0){
+      box.innerHTML = '<div class="empty">Nenhum item adicionado ainda.</div>';
+      return;
+    }
+    box.innerHTML = itensPedidoAtual.map((it, idx) =>
+      `<div class="item-row"><span>${it.qtd}x ${it.produto}</span><button onclick="removerItem(${idx})" title="Remover">✕</button></div>`
+    ).join('');
+  }
+
+  function confirmarPedido(){
+    const clienteId = document.getElementById('p-cliente').value;
+    const data = document.getElementById('p-data').value;
+    const hora = document.getElementById('p-hora').value;
+
+    if(!clienteId){ alert('Selecione um cliente cadastrado.'); return; }
+    if(itensPedidoAtual.length === 0){ alert('Adicione pelo menos um item ao pedido.'); return; }
+    if(!data || !hora){ alert('Informe a data e o horário de entrega.'); return; }
+
+    const cliente = clientes.find(c => c.id == clienteId);
+    pedidos.push({
+      id: proximoIdPedido++,
+      cliente: cliente.nome,
+      itens: [...itensPedidoAtual],
+      data, hora,
+      status: 'Recebido'
+    });
+
+    itensPedidoAtual = [];
+    renderItens();
+    document.getElementById('p-data').value = '';
+    document.getElementById('p-hora').value = '';
+    renderPedidos();
+
+    // leva o usuário para ver o pedido criado
+    document.querySelector('nav .tab[data-screen="pedidos"]').click();
+  }
+
+  // ---------- lista de pedidos ----------
+  function renderPedidos(){
+    const box = document.getElementById('lista-pedidos');
+    if(pedidos.length === 0){
+      box.innerHTML = '<div class="empty">Nenhum pedido registrado ainda.<br>Vá em "Novo Pedido" para criar o primeiro.</div>';
+      return;
+    }
+    box.innerHTML = pedidos.slice().reverse().map(p => {
+      const badgeClass = p.status.replace(' ', '-');
+      const proximoIndex = STATUS_FLOW.indexOf(p.status) + 1;
+      const podeAvancar = p.status !== 'Cancelado' && proximoIndex < STATUS_FLOW.length;
+      const proximoStatus = podeAvancar ? STATUS_FLOW[proximoIndex] : null;
+      const itensHtml = p.itens.map(it => `<span>${it.qtd}x ${it.produto}</span>`).join('');
+
+      return `
+        <div class="ticket">
+          <div class="ticket-top">
+            <div>
+              <div class="cliente">${p.cliente}</div>
+              <div class="num">Pedido #${String(p.id).padStart(3,'0')}</div>
+            </div>
+            <span class="badge ${badgeClass}">${p.status}</span>
+          </div>
+          <div class="ticket-body">
+            <div class="itens">${itensHtml}</div>
+            <div class="meta">Entrega: ${formatarData(p.data)} às ${p.hora}</div>
+            <div class="ticket-actions">
+              <button class="btn-avancar" ${podeAvancar ? '' : 'disabled'} onclick="avancarStatus(${p.id})">
+                ${podeAvancar ? 'Marcar como "' + proximoStatus + '"' : 'Concluído'}
+              </button>
+              ${p.status !== 'Cancelado' && p.status !== 'Entregue' ? `<button class="btn-cancelar" onclick="cancelarPedido(${p.id})">Cancelar pedido</button>` : ''}
+            </div>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  function avancarStatus(id){
+    const pedido = pedidos.find(p => p.id === id);
+    const idx = STATUS_FLOW.indexOf(pedido.status);
+    if(idx + 1 < STATUS_FLOW.length){
+      pedido.status = STATUS_FLOW[idx + 1];
+      renderPedidos();
+    }
+  }
+
+  function cancelarPedido(id){
+    const pedido = pedidos.find(p => p.id === id);
+    pedido.status = 'Cancelado';
+    renderPedidos();
+  }
+
+  function formatarData(iso){
+    if(!iso) return '';
+    const [ano, mes, dia] = iso.split('-');
+    return `${dia}/${mes}/${ano}`;
+  }
+
+  // ---------- estado inicial ----------
+  renderClientes();
+  renderItens();
+  renderPedidos();
+</script>
+
+</body>
+</html>
