@@ -17,11 +17,16 @@ entrega.
 
 ## Status do projeto
 
-🚧 Em desenvolvimento — Fase 1 (fundação técnica).
+🚧 Em desenvolvimento — **Incremento 1 concluído** (schema + migrations +
+testes). Ainda não há endpoints de API — isso é o Incremento 2.
 
 Autenticação/login por perfil está deliberadamente fora do MVP (ver backlog
 no `CLAUDE.md`, seção 5 e 13). O sistema roda hoje sem autenticação, para
 uso na rede interna da padaria.
+
+O banco de dados de desenvolvimento é SQLite. Uma migração manual para
+PostgreSQL está prevista para o futuro, mas não faz parte do escopo atual
+(ver `CLAUDE.md`, seção 11).
 
 ## Estrutura do repositório
 
@@ -29,20 +34,42 @@ uso na rede interna da padaria.
 Passoca_Padaria/
 ├── backend/
 │   ├── app/
-│   │   ├── models/      # modelos SQLAlchemy
-│   │   ├── schemas/     # schemas Pydantic
-│   │   ├── services/    # regras de negócio (RN01-RN04)
-│   │   ├── api/         # rotas/endpoints FastAPI
-│   │   └── core/        # config, banco, etc.
-│   ├── migrations/      # Alembic
-│   └── tests/           # pytest
-├── frontend/
+│   │   ├── models/       # modelos SQLAlchemy (Cliente, Produto, Pedido, ItemPedido)
+│   │   ├── schemas/      # schemas Pydantic (ainda vazio — Incremento 2)
+│   │   ├── services/     # regras de negócio RN01-RN04 (ainda vazio — Incremento 2)
+│   │   ├── api/          # rotas/endpoints FastAPI (ainda vazio — Incremento 2)
+│   │   └── core/         # config (settings) e conexão com banco
+│   ├── migrations/       # Alembic — histórico de mudanças de schema
+│   ├── tests/            # pytest
+│   ├── .env.example      # modelo de variáveis de ambiente
+│   ├── alembic.ini
+│   ├── pytest.ini
+│   ├── requirements.txt
+│   └── requirements-dev.txt
+├── frontend/              # ainda vazio — Fase 3
+├── docs/referencia-prototipo/  # protótipo HTML original, só como referência de UX
 └── CLAUDE.md
 ```
 
 ## Rodando localmente
 
-_(instruções serão adicionadas conforme o backend for implementado)_
+```bash
+cd backend
+python3 -m venv .venv
+source .venv/bin/activate          # Windows: .venv\Scripts\activate
+
+pip install -r requirements-dev.txt
+
+cp .env.example .env               # ajuste se necessário
+
+alembic upgrade head               # cria o banco SQLite (app.db) com o schema atual
+
+pytest -v                          # roda a suite de testes
+```
+
+Isso cria o schema completo (`clientes`, `produtos`, `pedidos`,
+`itens_pedido`) no arquivo `backend/app.db` (ignorado pelo git) e roda os
+15 testes automatizados do schema.
 
 ## Regras de negócio principais
 
