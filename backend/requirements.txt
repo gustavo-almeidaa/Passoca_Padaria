@@ -1,6 +1,11 @@
-fastapi==0.141.1
-uvicorn[standard]==0.52.4
-sqlalchemy==2.0.52
-alembic==1.19.1
-pydantic-settings==2.15.0
-python-dotenv==1.2.2
+fastapi==0.115.6
+uvicorn[standard]==0.32.1
+sqlalchemy==2.0.36
+# Pin explícito: sqlalchemy depende de greenlet, e a versão mais recente
+# (3.2.x) não publica wheel pré-compilado pra Windows + Python 3.9, o que
+# força build local exigindo MSVC C++ Build Tools (indisponível por padrão).
+# 3.1.1 tem wheel pronto pra essa combinação e é compatível.
+greenlet==3.1.1
+alembic==1.14.0
+pydantic-settings==2.6.1
+python-dotenv==1.0.1
