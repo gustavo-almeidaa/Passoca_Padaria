@@ -19,10 +19,10 @@ logger = logging.getLogger("passoca")
 app = FastAPI(
     title="Padaria do Passoca — API",
     description=(
-        "API interna para cadastro de clientes, produtos e registro de "
-        "pedidos (RF01-RF04)."
+        "API interna para cadastro de clientes, produtos e ciclo de vida de "
+        "pedidos (RF01-RF07)."
     ),
-    version="0.3.0",
+    version="0.4.0",
 )
 
 app.include_router(clientes.router)

@@ -1,4 +1,4 @@
-"""Service de Pedido — RF03/RF04, aplicando RN01 no backend.
+"""Service de Pedido — RF03/RF04/RF06/RF07, aplicando RN01-RN04 no backend.
 
 Regra de negócio crítica (CLAUDE.md, seção 1.4: "RN01-RN04 são validadas no
 backend, sempre") vive aqui, fora do endpoint FastAPI, para poder ser testada
@@ -10,18 +10,25 @@ ver `app/api/pedidos.py`.
 """
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 
 from sqlalchemy.orm import Session
 
 from app.models.cliente import Cliente
 from app.models.item_pedido import ItemPedido
-from app.models.pedido import Pedido
+from app.models.pedido import TRANSICOES_VALIDAS, Pedido, StatusPedido
 from app.models.produto import Produto
 from app.schemas.pedido import PedidoCreate
 
 # RN01 — antecedência mínima entre a criação do pedido e a data/hora de entrega.
 ANTECEDENCIA_MINIMA = timedelta(hours=24)
+
+# RN03 — janela mínima antes da entrega em que o cancelamento ainda é aceito.
+JANELA_CANCELAMENTO = timedelta(hours=12)
+
+# Estados a partir dos quais RF06/RN03 permite cancelar (RN04: cancelado só é
+# alcançável a partir de recebido ou em_producao).
+STATUS_CANCELAVEIS = {StatusPedido.RECEBIDO, StatusPedido.EM_PRODUCAO}
 
 
 class ClienteNaoEncontrado(Exception):
@@ -38,6 +45,26 @@ class ProdutoInvalido(Exception):
 
 class AntecedenciaMinimaNaoRespeitada(Exception):
     """RN01: entrega marcada com menos de 24h de antecedência."""
+
+
+class PedidoNaoEncontrado(Exception):
+    """Ação referencia um pedido que não existe."""
+
+
+class SinalNaoConfirmado(Exception):
+    """RN02: pedido com item personalizável tentando sair de `recebido` sem sinal."""
+
+
+class TransicaoInvalida(Exception):
+    """RN04: ação de avançar/cancelar não permitida no status atual do pedido."""
+
+
+class ForaDaJanelaDeCancelamento(Exception):
+    """RN03: cancelamento pedido a menos de 12h da entrega."""
+
+
+class IntervaloDeDatasInvalido(Exception):
+    """RF07: `data_fim` anterior a `data_inicio` na listagem por período."""
 
 
 def criar_pedido(
@@ -94,3 +121,122 @@ def criar_pedido(
     db.commit()
     db.refresh(pedido)
     return pedido
+
+
+def _obter_pedido_ou_404(db: Session, pedido_id: int) -> Pedido:
+    pedido = db.get(Pedido, pedido_id)
+    if pedido is None:
+        raise PedidoNaoEncontrado(f"Pedido {pedido_id} não encontrado.")
+    return pedido
+
+
+def _tem_item_personalizavel(pedido: Pedido) -> bool:
+    return any(item.produto.personalizavel for item in pedido.itens)
+
+
+def _proximo_status_producao(atual: StatusPedido) -> StatusPedido | None:
+    """Próximo passo da linha de produção (RN04), ignorando o desvio para
+    `cancelado` — que é uma ação separada, ver `cancelar_pedido`.
+
+    Deriva de `TRANSICOES_VALIDAS` (app/models/pedido.py) em vez de manter um
+    mapeamento duplicado, para nunca ficar fora de sincronia com a máquina de
+    estados que é a fonte da verdade.
+    """
+    destinos = TRANSICOES_VALIDAS.get(atual, set()) - {StatusPedido.CANCELADO}
+    if not destinos:
+        return None
+    return next(iter(destinos))
+
+
+def confirmar_sinal(db: Session, pedido_id: int) -> Pedido:
+    """Confirma o sinal de um pedido (RN02), liberando a saída de `recebido`
+    quando há item personalizável.
+    """
+    pedido = _obter_pedido_ou_404(db, pedido_id)
+    pedido.sinal_confirmado = True
+    db.commit()
+    db.refresh(pedido)
+    return pedido
+
+
+def avancar_status(db: Session, pedido_id: int) -> Pedido:
+    """Avança o pedido para a próxima etapa da produção (UC04), aplicando
+    RN04 (máquina de estados) e RN02 (sinal obrigatório para sair de
+    `recebido` com item personalizável).
+    """
+    pedido = _obter_pedido_ou_404(db, pedido_id)
+
+    proximo = _proximo_status_producao(pedido.status)
+    if proximo is None:
+        raise TransicaoInvalida(
+            f'Pedido está em "{pedido.status.value}" e não tem próxima etapa '
+            "de produção."
+        )
+
+    if (
+        pedido.status == StatusPedido.RECEBIDO
+        and proximo == StatusPedido.EM_PRODUCAO
+        and _tem_item_personalizavel(pedido)
+        and not pedido.sinal_confirmado
+    ):
+        raise SinalNaoConfirmado(
+            "Este pedido tem item personalizado e precisa de sinal confirmado "
+            "antes de iniciar a produção."
+        )
+
+    pedido.status = proximo
+    db.commit()
+    db.refresh(pedido)
+    return pedido
+
+
+def cancelar_pedido(
+    db: Session, pedido_id: int, *, agora: datetime | None = None
+) -> Pedido:
+    """Cancela um pedido (RF06), aplicando RN04 (só a partir de `recebido`
+    ou `em_producao`) e RN03 (só até 12h antes da entrega).
+
+    `agora` é injetável para testes determinísticos da janela de
+    cancelamento, no mesmo padrão usado em `criar_pedido` para RN01.
+    """
+    agora = agora or datetime.now()
+    pedido = _obter_pedido_ou_404(db, pedido_id)
+
+    if pedido.status not in STATUS_CANCELAVEIS:
+        raise TransicaoInvalida(
+            f'Pedido em "{pedido.status.value}" não pode mais ser cancelado.'
+        )
+
+    momento_entrega = datetime.combine(pedido.data_entrega, pedido.hora_entrega)
+    if momento_entrega - agora < JANELA_CANCELAMENTO:
+        raise ForaDaJanelaDeCancelamento(
+            "Esse pedido não pode mais ser cancelado — faltam menos de 12h "
+            "para a entrega."
+        )
+
+    pedido.status = StatusPedido.CANCELADO
+    db.commit()
+    db.refresh(pedido)
+    return pedido
+
+
+def listar_pedidos(
+    db: Session, data_inicio: date, data_fim: date | None = None
+) -> list[Pedido]:
+    """Lista pedidos com entrega no período informado (RF07).
+
+    `data_fim` é opcional — quando omitida, assume o mesmo valor de
+    `data_inicio` (cobre o caso "listar por dia").
+    """
+    data_fim = data_fim or data_inicio
+    if data_fim < data_inicio:
+        raise IntervaloDeDatasInvalido(
+            "A data final do período não pode ser anterior à data inicial."
+        )
+
+    return (
+        db.query(Pedido)
+        .filter(Pedido.data_entrega >= data_inicio, Pedido.data_entrega <= data_fim)
+        .order_by(Pedido.data_entrega, Pedido.hora_entrega)
+        .all()
+    )

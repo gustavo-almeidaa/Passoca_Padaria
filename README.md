@@ -19,10 +19,10 @@ entrega.
 
 🚧 Em desenvolvimento — **Incremento 1 concluído** (schema + migrations +
 testes), **Incremento 2 concluído** (API REST de Cliente e Produto — RF01,
-RF02) e **Incremento 3 concluído** (registro de pedido — RF03, RF04 — com
-RN01 aplicada no backend). RF05 completo (listagem), RF06 (cancelar, RN03),
-RF07 (listar por período) e RN02/RN04 (sinal e máquina de estados) ainda não
-existem — isso é o Incremento 4.
+RF02), **Incremento 3 concluído** (registro de pedido — RF03, RF04 — com
+RN01 aplicada no backend) e **Incremento 4 concluído** (ciclo de vida do
+pedido — RF06 cancelar, RF07 listar por período, com RN02, RN03 e RN04
+aplicadas no backend). RF01-RF07 do levantamento original estão completos.
 
 Autenticação/login por perfil está deliberadamente fora do MVP (ver backlog
 no `CLAUDE.md`, seção 5 e 13). O sistema roda hoje sem autenticação, para
@@ -40,7 +40,7 @@ Passoca_Padaria/
 │   ├── app/
 │   │   ├── models/       # modelos SQLAlchemy (Cliente, Produto, Pedido, ItemPedido)
 │   │   ├── schemas/      # schemas Pydantic — Cliente, Produto e Pedido
-│   │   ├── services/     # regras de negócio — RN01 (Incremento 3); RN02-RN04 no Incremento 4
+│   │   ├── services/     # regras de negócio — RN01-RN04 aplicadas no backend
 │   │   ├── api/          # rotas FastAPI — /clientes, /produtos e /pedidos
 │   │   ├── main.py       # ponto de entrada da API (app FastAPI)
 │   │   └── core/         # config (settings) e conexão com banco
@@ -76,7 +76,7 @@ uvicorn app.main:app --reload      # sobe a API em http://127.0.0.1:8000
 
 Isso cria o schema completo (`clientes`, `produtos`, `pedidos`,
 `itens_pedido`) no arquivo `backend/app.db` (ignorado pelo git) e roda os
-44 testes automatizados (schema + API + service de pedidos). Com a API no
+79 testes automatizados (schema + API + service de pedidos). Com a API no
 ar, a documentação interativa (Swagger) fica disponível em
 `http://127.0.0.1:8000/docs`.
 
@@ -92,7 +92,11 @@ ar, a documentação interativa (Swagger) fica disponível em
 | `GET` | `/produtos?ativo=true` | Listar produtos (filtro opcional por ativo) |
 | `GET` | `/produtos/{id}` | Consultar um produto |
 | `POST` | `/pedidos` | Registrar pedido (RF03, RF04) — aplica RN01 |
-| `GET` | `/pedidos/{id}` | Consultar um pedido, com seus itens |
+| `GET` | `/pedidos?data_inicio=&data_fim=` | Listar pedidos por período/dia (RF07) |
+| `GET` | `/pedidos/{id}` | Consultar um pedido, com seus itens (RF05) |
+| `POST` | `/pedidos/{id}/confirmar-sinal` | Confirma o sinal de um pedido (suporte a RN02) |
+| `POST` | `/pedidos/{id}/avancar` | Avança para a próxima etapa de produção — aplica RN02 e RN04 |
+| `POST` | `/pedidos/{id}/cancelar` | Cancela o pedido (RF06) — aplica RN03 e RN04 |
 
 ## Regras de negócio principais
 
