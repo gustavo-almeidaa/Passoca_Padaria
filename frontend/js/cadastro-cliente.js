@@ -5,6 +5,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const botaoSalvar = document.getElementById("botao-salvar-cliente");
   const inputNome = document.getElementById("c-nome");
   const inputTelefone = document.getElementById("c-telefone");
+  const inputEndereco = document.getElementById("c-endereco");
   const listaClientes = document.getElementById("lista-clientes");
 
   carregarClientes();
@@ -22,6 +23,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const nome = inputNome.value.trim();
     const telefone = inputTelefone.value.trim();
+    const endereco = inputEndereco.value.trim();
     if (!nome || !telefone) {
       mostrarFeedback(feedback, "Preencha nome e telefone do cliente.", "erro");
       return;
@@ -29,7 +31,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     definirCarregando(botaoSalvar, true);
     try {
-      await api.criarCliente({ nome, telefone });
+      await api.criarCliente({ nome, telefone, endereco: endereco || undefined });
       form.reset();
       mostrarFeedback(feedback, "Cliente salvo com sucesso.", "sucesso");
       inputNome.focus();
@@ -58,10 +60,12 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
     listaClientes.innerHTML = clientes
-      .map(
-        (c) =>
-          `<span class="chip"><b>${escapeHtml(c.nome)}</b> · ${escapeHtml(c.telefone)}</span>`
-      )
+      .map((c) => {
+        const endereco = c.endereco
+          ? ` · ${escapeHtml(c.endereco)}`
+          : "";
+        return `<span class="chip"><b>${escapeHtml(c.nome)}</b> · ${escapeHtml(c.telefone)}${endereco}</span>`;
+      })
       .join("");
   }
 });

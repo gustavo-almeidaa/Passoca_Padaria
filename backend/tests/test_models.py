@@ -61,6 +61,7 @@ class TestCliente:
         assert cliente.id is not None
         assert cliente.nome == "Maria Silva"
         assert cliente.telefone == "43999990000"
+        assert cliente.endereco is None
         assert cliente.criado_em is not None
 
     def test_nome_e_obrigatorio(self, db_session):
@@ -68,6 +69,18 @@ class TestCliente:
         db_session.add(cliente)
         with pytest.raises(IntegrityError):
             db_session.commit()
+
+    def test_endereco_e_opcional_mas_pode_ser_preenchido(self, db_session):
+        cliente = Cliente(
+            nome="Maria Silva",
+            telefone="43999990000",
+            endereco="Rua das Flores, 123",
+        )
+        db_session.add(cliente)
+        db_session.commit()
+        db_session.refresh(cliente)
+
+        assert cliente.endereco == "Rua das Flores, 123"
 
 
 class TestProduto:

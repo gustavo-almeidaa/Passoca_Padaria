@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from sqlalchemy import DateTime, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -19,6 +19,10 @@ class Cliente(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     nome: Mapped[str] = mapped_column(String(120), nullable=False)
     telefone: Mapped[str] = mapped_column(String(20), nullable=False)
+    # Opcional (decisão de 2026-08-25): nem todo cliente recebe entrega — boa
+    # parte só retira no balcão. Texto livre, sem estrutura de
+    # rua/número/bairro (RNF01: poucos cliques no cadastro).
+    endereco: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     criado_em: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.now(), nullable=False
     )

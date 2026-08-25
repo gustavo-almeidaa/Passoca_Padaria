@@ -166,6 +166,13 @@ select:invalid { color: var(--ink-soft); }
   cursor: pointer;
 }
 
+.opcional {
+  text-transform: none;
+  font-weight: 400;
+  letter-spacing: normal;
+  color: var(--ink-soft);
+}
+
 .row { display: flex; gap: 16px; }
 .row > div { flex: 1; }
 

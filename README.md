@@ -28,10 +28,12 @@ mínima e tela de cadastro de cliente, RF01), **Incremento 6 concluído**
 (frontend — tela de novo pedido, RF03/RF04, com RN01 replicada no
 frontend), **Incremento 8 concluído** (frontend — tela de Pedidos, RF05 e
 RF07, com confirmar sinal/RN02, avançar status/RN04 e cancelar/RF06+RN03)
-e **Incremento 9 concluído** (frontend — as 4 telas unificadas em uma
+**Incremento 9 concluído** (frontend — as 4 telas unificadas em uma
 única página, trocando de seção via JS sem recarregar, com sincronização
-entre abas). RF01-RF07 do levantamento original estão completos tanto no
-backend quanto no frontend.
+entre abas) e **Incremento 10 concluído** (RF01 ganha campo de endereço
+opcional — texto livre — no cadastro de cliente, com migration). RF01-RF07
+do levantamento original estão completos tanto no backend quanto no
+frontend.
 
 Autenticação/login por perfil está deliberadamente fora do MVP (ver backlog
 no `CLAUDE.md`, seção 5 e 13). O sistema roda hoje sem autenticação, para

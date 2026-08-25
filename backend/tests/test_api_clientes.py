@@ -8,8 +8,33 @@ def test_criar_cliente_sucesso(client):
     data = resp.json()
     assert data["nome"] == "Maria"
     assert data["telefone"] == "11999998888"
+    assert data["endereco"] is None
     assert "id" in data
     assert "criado_em" in data
+
+
+def test_criar_cliente_com_endereco(client):
+    resp = client.post(
+        "/clientes",
+        json={
+            "nome": "Maria",
+            "telefone": "11999998888",
+            "endereco": "Rua das Flores, 123, Centro",
+        },
+    )
+
+    assert resp.status_code == 201
+    assert resp.json()["endereco"] == "Rua das Flores, 123, Centro"
+
+
+def test_criar_cliente_endereco_em_branco_vira_none(client):
+    resp = client.post(
+        "/clientes",
+        json={"nome": "Maria", "telefone": "11999998888", "endereco": "   "},
+    )
+
+    assert resp.status_code == 201
+    assert resp.json()["endereco"] is None
 
 
 def test_criar_cliente_nome_vazio_e_rejeitado(client):

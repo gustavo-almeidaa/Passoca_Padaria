@@ -199,7 +199,7 @@ branches e comentários de código para rastreabilidade (`feat: RF03 registro de
 
 | ID | Requisito |
 |---|---|
-| RF01 | Cadastrar cliente (nome, telefone) |
+| RF01 | Cadastrar cliente (nome, telefone, endereço opcional — adicionado em 2026-08-25) |
 | RF02 | Cadastrar produto disponível para encomenda (nome, preço, categoria, unidade) |
 | RF03 | Registrar novo pedido associando cliente + itens (produto + quantidade) |
 | RF04 | Definir data e horário de entrega/retirada do pedido |
@@ -270,6 +270,8 @@ Cliente
   id              PK
   nome            string, obrigatório
   telefone        string, obrigatório
+  endereco        string, opcional (texto livre — nem todo cliente recebe
+                  entrega; adicionado em 2026-08-25)
   criado_em       timestamp
 
 Produto

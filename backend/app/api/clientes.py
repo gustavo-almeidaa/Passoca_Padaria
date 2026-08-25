@@ -13,7 +13,9 @@ router = APIRouter(prefix="/clientes", tags=["clientes"])
 
 @router.post("", response_model=ClienteRead, status_code=status.HTTP_201_CREATED)
 def criar_cliente(payload: ClienteCreate, db: Session = Depends(get_db)) -> Cliente:
-    cliente = Cliente(nome=payload.nome, telefone=payload.telefone)
+    cliente = Cliente(
+        nome=payload.nome, telefone=payload.telefone, endereco=payload.endereco
+    )
     db.add(cliente)
     db.commit()
     db.refresh(cliente)
