@@ -347,9 +347,13 @@ Não escolha estes itens sozinho sem perguntar primeiro, mesmo que pareça
       como item de backlog em aberto (seção 5). Primeiro usuário (a
       proprietária) é criado automaticamente no primeiro boot a partir de
       `ADMIN_EMAIL`/`ADMIN_SENHA` no ambiente — ver `backend/app/main.py`.
-- [ ] Onde vai rodar: decidido o serviço (**Render**, PaaS gerenciado —
-      2026-08-25), mas o deploy em si ainda não foi configurado/executado.
-      Próximo passo.
+- [x] Onde vai rodar — **Render** (PaaS gerenciado), plano **free** pra
+      começar (decidido em 2026-08-25; dá pra migrar pro plano pago depois
+      sem mudar código, se o "dormir" do free incomodar no dia a dia).
+      `render.yaml` na raiz do repo já descreve o serviço — falta só criar
+      a conta/Blueprint no painel do Render (ação de conta, feita pelo
+      dono do projeto) e preencher os segredos por lá. Ver README.md,
+      seção "Deploy (Render)".
 - [x] Necessidade de funcionar offline — **não é requisito do MVP**,
       decidido em 2026-08-25 junto com a escolha do banco gerenciado
       (que já pressupõe internet disponível).

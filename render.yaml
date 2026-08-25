@@ -1,0 +1,31 @@
+# Blueprint do Render — Incremento 13 (deploy).
+#
+# Deploy: no painel do Render, "New" -> "Blueprint" -> conectar este
+# repositório. O Render lê este arquivo e pré-configura o serviço; os
+# valores marcados `sync: false` ficam em branco de propósito — são
+# segredos, você preenche direto no painel do Render (nunca aqui, nunca
+# no chat).
+#
+# rootDir: backend/ porque é onde ficam requirements.txt e o pacote `app`
+# (ver CLAUDE.md, seção 9, e README.md, "Estrutura do repositório").
+services:
+  - type: web
+    name: passoca-padaria
+    runtime: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    plan: free
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: SESSION_SECRET_KEY
+        sync: false
+      - key: ENVIRONMENT
+        value: production
+      - key: ADMIN_NOME
+        sync: false
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_SENHA
+        sync: false

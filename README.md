@@ -34,16 +34,17 @@ entre abas), **Incremento 10 concluído** (RF01 ganha campo de endereço
 opcional — texto livre — no cadastro de cliente, com migration) e
 **Incremento 11 concluído** (banco de dados migrado de SQLite para
 PostgreSQL gerenciado via Neon — resolve a decisão em aberto da seção 11
-do `CLAUDE.md` e atende RNF03, que pedia backup) e **Incremento 12
+do `CLAUDE.md` e atende RNF03, que pedia backup), **Incremento 12
 concluído** (autenticação por sessão — login obrigatório em todas as
 rotas, 3 perfis salvos no usuário mas ainda com o mesmo acesso entre si,
-sem permissão diferenciada). RF01-RF07 do levantamento original estão
-completos tanto no backend quanto no frontend.
+sem permissão diferenciada) e **Incremento 13 em andamento** (deploy —
+`render.yaml` já descreve o serviço no repositório; falta criar a conta e
+o Blueprint no painel do Render — ver seção "Deploy (Render)" abaixo).
+RF01-RF07 do levantamento original estão completos tanto no backend
+quanto no frontend.
 
 O sistema passou a depender de internet, já que o banco agora é gerenciado
 na nuvem (decisão registrada: funcionar offline não é requisito do MVP).
-Deploy em produção (Render, já escolhido) é a próxima decisão em aberto —
-ver `CLAUDE.md`, seção 11.
 
 ## Estrutura do repositório
 
@@ -147,6 +148,42 @@ tiver nenhum usuário, a conta da proprietária é criada automaticamente.
 Com o servidor no ar: o sistema fica em `http://127.0.0.1:8000/` — pede
 login antes de mostrar qualquer tela — e a documentação interativa
 (Swagger) em `http://127.0.0.1:8000/docs`.
+
+## Deploy (Render)
+
+O `render.yaml` na raiz do repositório já descreve o serviço (plano free,
+comando de build/start, `rootDir: backend`) — o Render lê esse arquivo
+automaticamente ao criar um Blueprint, então a maior parte da configuração
+não precisa ser preenchida manualmente no painel. Passos (ação de conta,
+cada um faz a sua):
+
+1. Crie uma conta em [render.com](https://render.com) (dá pra entrar com
+   GitHub).
+2. No painel, **New → Blueprint** → conecte este repositório (o Render
+   detecta o `render.yaml` sozinho).
+3. Nos campos de ambiente marcados como segredo, preencha **direto no
+   painel do Render** (nunca comitados, nunca colados em chat):
+   - `DATABASE_URL` — a mesma connection string do Neon usada localmente
+     (ou uma nova, se preferir separar banco de dev e produção).
+   - `SESSION_SECRET_KEY` — gere uma **chave nova**, diferente da usada em
+     dev local: `python -c "import secrets; print(secrets.token_hex(32))"`.
+   - `ADMIN_NOME`, `ADMIN_EMAIL`, `ADMIN_SENHA` — só têm efeito se o banco
+     apontado ainda não tiver nenhum usuário. Se for usar o mesmo Neon que
+     já tem a proprietária cadastrada, pode deixar em branco ou repetir os
+     mesmos valores — o bootstrap não faz nada se já existe usuário.
+4. Deploy automático a cada `git push` pra `main` (comportamento padrão do
+   Render em Blueprints) — sem passo manual adicional depois do primeiro
+   setup.
+5. Migrations (`alembic upgrade head`) **não rodam sozinhas no deploy** —
+   continue rodando manualmente do seu ambiente local, apontando pro mesmo
+   `DATABASE_URL` do Render, sempre que houver mudança de schema (mesmo
+   fluxo já usado até aqui).
+
+Plano free do Render "dorme" após ~15min sem acesso — o primeiro acesso
+depois disso demora uns 30-60s pra responder (decisão registrada, aceitável
+pra fase inicial). Dá pra migrar pro plano pago (Starter, sempre ativo)
+depois só trocando `plan: free` para `plan: starter` no `render.yaml`, sem
+mexer em mais nada.
 
 ## Endpoints disponíveis
 
