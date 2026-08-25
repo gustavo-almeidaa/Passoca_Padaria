@@ -23,11 +23,12 @@ RF02), **Incremento 3 concluído** (registro de pedido — RF03, RF04 — com
 RN01 aplicada no backend), **Incremento 4 concluído** (ciclo de vida do
 pedido — RF06 cancelar, RF07 listar por período, com RN02, RN03 e RN04
 aplicadas no backend), **Incremento 5 concluído** (frontend — infraestrutura
-mínima e tela de cadastro de cliente, RF01) e **Incremento 6 concluído**
-(frontend — tela de cadastro de produto, RF02). RF01-RF07 do levantamento
-original estão completos no backend; o frontend cobre RF01 e RF02 até
-aqui — tela de novo pedido fica para o Incremento 7 e lista de pedidos para
-o Incremento 8.
+mínima e tela de cadastro de cliente, RF01), **Incremento 6 concluído**
+(frontend — tela de cadastro de produto, RF02) e **Incremento 7 concluído**
+(frontend — tela de novo pedido, RF03/RF04, com RN01 replicada no
+frontend). RF01-RF07 do levantamento original estão completos no backend;
+o frontend cobre RF01 até RF04 até aqui — a tela de lista de pedidos com
+o ciclo de vida completo (RF05-RF07, RN02-RN04) fica para o Incremento 8.
 
 Autenticação/login por perfil está deliberadamente fora do MVP (ver backlog
 no `CLAUDE.md`, seção 5 e 13). O sistema roda hoje sem autenticação, para
@@ -59,9 +60,11 @@ Passoca_Padaria/
 ├── frontend/
 │   ├── index.html         # tela de cadastro de cliente (RF01)
 │   ├── produtos.html      # tela de cadastro de produto (RF02)
+│   ├── pedido.html        # tela de novo pedido (RF03/RF04)
 │   ├── css/style.css      # estilo compartilhado entre telas
 │   └── js/                # api.js (cliente HTTP), ui.js (feedback visual),
-│                           # cadastro-cliente.js, cadastro-produto.js
+│                           # cadastro-cliente.js, cadastro-produto.js,
+│                           # novo-pedido.js
 ├── docs/referencia-prototipo/  # protótipo HTML original, só como referência de UX
 └── CLAUDE.md
 ```

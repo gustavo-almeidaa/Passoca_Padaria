@@ -200,7 +200,72 @@ button.action:focus-visible { outline: 3px solid var(--green); outline-offset: 2
 }
 .feedback--sucesso { background: #E4EEDD; color: var(--green); border: 1px solid var(--green); }
 .feedback--erro { background: #F6E3E0; color: var(--red); border: 1px solid var(--red); }
+.feedback--aviso { background: #FBF0DA; color: #8a5f10; border: 1px solid var(--gold); }
 .feedback[hidden] { display: none; }
+
+.aviso {
+  margin-top: 14px;
+  padding: 10px 14px;
+  border-radius: 6px;
+  font-size: 0.88rem;
+  background: #FBF0DA;
+  color: #8a5f10;
+  border: 1px solid var(--gold);
+}
+.aviso[hidden] { display: none; }
+
+button.secondary {
+  font-family: 'Karla', sans-serif;
+  font-size: 0.88rem;
+  font-weight: 600;
+  background: none;
+  color: var(--crust);
+  border: 1.5px dashed var(--crust);
+  padding: 8px 16px;
+  border-radius: 7px;
+  cursor: pointer;
+  margin-top: 4px;
+}
+button.secondary:hover { background: rgba(139, 74, 43, 0.08); }
+
+.item-pedido-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.item-pedido-row select { flex: 1; }
+.item-pedido-row .item-quantidade {
+  width: 64px;
+  text-align: center;
+  flex: none;
+}
+.item-pedido-row .item-subtotal {
+  min-width: 92px;
+  text-align: right;
+  font-weight: 700;
+  color: var(--crust);
+}
+.item-pedido-row .item-remover {
+  background: none;
+  border: 1.5px solid var(--border);
+  color: var(--red);
+  border-radius: 6px;
+  width: 32px;
+  height: 32px;
+  flex: none;
+  cursor: pointer;
+  font-size: 0.9rem;
+  line-height: 1;
+}
+.item-pedido-row .item-remover:hover { background: #F6E3E0; }
+
+.total {
+  margin-top: 18px;
+  font-size: 1.05rem;
+  color: var(--ink);
+}
+.total b { color: var(--crust); }
 
 .empty {
   text-align: center;
@@ -267,4 +332,7 @@ footer {
 @media (max-width: 560px) {
   .row { flex-direction: column; }
   header h1 { font-size: 1.8rem; }
+  .item-pedido-row { flex-wrap: wrap; }
+  .item-pedido-row select { flex: 1 1 100%; }
+  .item-pedido-row .item-subtotal { min-width: auto; }
 }

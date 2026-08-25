@@ -74,7 +74,14 @@ const api = {
   listarClientes: () => apiFetch("/clientes"),
   criarCliente: (dados) =>
     apiFetch("/clientes", { method: "POST", body: JSON.stringify(dados) }),
-  listarProdutos: () => apiFetch("/produtos"),
+  listarProdutos: (opcoes = {}) => {
+    const params = new URLSearchParams();
+    if (opcoes.ativo !== undefined) params.set("ativo", opcoes.ativo);
+    const query = params.toString();
+    return apiFetch(`/produtos${query ? `?${query}` : ""}`);
+  },
   criarProduto: (dados) =>
     apiFetch("/produtos", { method: "POST", body: JSON.stringify(dados) }),
+  criarPedido: (dados) =>
+    apiFetch("/pedidos", { method: "POST", body: JSON.stringify(dados) }),
 };
