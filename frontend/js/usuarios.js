@@ -1,5 +1,5 @@
 /*
- * Tela de Usuários — Incremento 12.
+ * Tela de Usuários — Incremento 12 (cadastro) e 14 (trocar a própria senha).
  *
  * Permite criar login pra atendente/padeiro além da proprietária (criada
  * automaticamente no bootstrap — ver backend/app/main.py). Qualquer
@@ -7,6 +7,12 @@
  * diferenciada por perfil não existe ainda (CLAUDE.md, seção 11).
  */
 document.addEventListener("DOMContentLoaded", () => {
+  const formTrocarSenha = document.getElementById("form-trocar-senha");
+  const feedbackTrocarSenha = document.getElementById("feedback-trocar-senha");
+  const botaoTrocarSenha = document.getElementById("botao-trocar-senha");
+  const inputSenhaAtual = document.getElementById("ts-senha-atual");
+  const inputSenhaNova = document.getElementById("ts-senha-nova");
+
   const form = document.getElementById("form-usuario");
   const feedback = document.getElementById("feedback-usuario");
   const botaoSalvar = document.getElementById("botao-salvar-usuario");
@@ -15,6 +21,37 @@ document.addEventListener("DOMContentLoaded", () => {
   const inputSenha = document.getElementById("u-senha");
   const selectPerfil = document.getElementById("u-perfil");
   const listaUsuarios = document.getElementById("lista-usuarios");
+
+  formTrocarSenha.addEventListener("submit", async (evento) => {
+    evento.preventDefault();
+    limparFeedback(feedbackTrocarSenha);
+
+    const senhaAtual = inputSenhaAtual.value;
+    const senhaNova = inputSenhaNova.value;
+    if (!senhaAtual || !senhaNova) {
+      mostrarFeedback(feedbackTrocarSenha, "Preencha a senha atual e a nova senha.", "erro");
+      return;
+    }
+    if (senhaNova.length < 8) {
+      mostrarFeedback(
+        feedbackTrocarSenha,
+        "A nova senha precisa ter pelo menos 8 caracteres.",
+        "erro"
+      );
+      return;
+    }
+
+    definirCarregando(botaoTrocarSenha, true);
+    try {
+      await api.trocarSenha(senhaAtual, senhaNova);
+      formTrocarSenha.reset();
+      mostrarFeedback(feedbackTrocarSenha, "Senha alterada com sucesso.", "sucesso");
+    } catch (erro) {
+      mostrarFeedback(feedbackTrocarSenha, erro.message, "erro");
+    } finally {
+      definirCarregando(botaoTrocarSenha, false);
+    }
+  });
 
   const ROTULOS_PERFIL = {
     proprietaria: "Proprietária",

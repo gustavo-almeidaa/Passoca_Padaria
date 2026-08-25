@@ -35,6 +35,21 @@ class UsuarioCreate(BaseModel):
         return v
 
 
+class TrocarSenhaRequest(BaseModel):
+    """RF novo (Incremento 14): usuário logado troca a própria senha —
+    exige a senha atual pra confirmar que é mesmo o dono da conta."""
+
+    senha_atual: str
+    senha_nova: str
+
+    @field_validator("senha_nova")
+    @classmethod
+    def senha_nova_minima(cls, v: str) -> str:
+        if len(v) < 8:
+            raise ValueError("A nova senha precisa ter pelo menos 8 caracteres.")
+        return v
+
+
 class UsuarioRead(BaseModel):
     """Nunca inclui senha_hash — o que sai da API não expõe o hash da senha."""
 

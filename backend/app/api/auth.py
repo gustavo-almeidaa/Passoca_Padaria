@@ -14,7 +14,7 @@ from app.api.deps import get_usuario_atual
 from app.core.database import get_db
 from app.core.security import hash_senha, verificar_senha
 from app.models.usuario import Usuario
-from app.schemas.usuario import UsuarioCreate, UsuarioLogin, UsuarioRead
+from app.schemas.usuario import TrocarSenhaRequest, UsuarioCreate, UsuarioLogin, UsuarioRead
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -47,6 +47,22 @@ def logout(request: Request) -> None:
 @router.get("/me", response_model=UsuarioRead)
 def me(usuario_atual: Usuario = Depends(get_usuario_atual)) -> Usuario:
     return usuario_atual
+
+
+@router.post("/trocar-senha", status_code=status.HTTP_204_NO_CONTENT, response_model=None)
+def trocar_senha(
+    payload: TrocarSenhaRequest,
+    db: Session = Depends(get_db),
+    usuario_atual: Usuario = Depends(get_usuario_atual),
+) -> None:
+    if not verificar_senha(payload.senha_atual, usuario_atual.senha_hash):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Senha atual incorreta.",
+        )
+
+    usuario_atual.senha_hash = hash_senha(payload.senha_nova)
+    db.commit()
 
 
 @router.get("/usuarios", response_model=list[UsuarioRead])

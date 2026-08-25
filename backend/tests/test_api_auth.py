@@ -178,3 +178,75 @@ class TestCriarUsuario:
         assert resp.status_code == 200
         emails = [u["email"] for u in resp.json()]
         assert usuario_teste.email in emails
+
+
+class TestTrocarSenha:
+    def _login(self, client_anonimo, db_session, senha="senha-antiga-123"):
+        _criar_usuario(db_session, email="dona@passoca.com", senha=senha)
+        client_anonimo.post("/auth/login", json={"email": "dona@passoca.com", "senha": senha})
+
+    def test_trocar_senha_com_senha_atual_correta(self, client_anonimo, db_session):
+        self._login(client_anonimo, db_session)
+
+        resp = client_anonimo.post(
+            "/auth/trocar-senha",
+            json={"senha_atual": "senha-antiga-123", "senha_nova": "senha-nova-456"},
+        )
+
+        assert resp.status_code == 204
+
+    def test_login_com_senha_nova_funciona_depois_da_troca(self, client_anonimo, db_session):
+        self._login(client_anonimo, db_session)
+        client_anonimo.post(
+            "/auth/trocar-senha",
+            json={"senha_atual": "senha-antiga-123", "senha_nova": "senha-nova-456"},
+        )
+        client_anonimo.post("/auth/logout")
+
+        resp = client_anonimo.post(
+            "/auth/login", json={"email": "dona@passoca.com", "senha": "senha-nova-456"}
+        )
+
+        assert resp.status_code == 200
+
+    def test_login_com_senha_antiga_deixa_de_funcionar_apos_troca(self, client_anonimo, db_session):
+        self._login(client_anonimo, db_session)
+        client_anonimo.post(
+            "/auth/trocar-senha",
+            json={"senha_atual": "senha-antiga-123", "senha_nova": "senha-nova-456"},
+        )
+        client_anonimo.post("/auth/logout")
+
+        resp = client_anonimo.post(
+            "/auth/login", json={"email": "dona@passoca.com", "senha": "senha-antiga-123"}
+        )
+
+        assert resp.status_code == 401
+
+    def test_trocar_senha_com_senha_atual_errada_e_rejeitado(self, client_anonimo, db_session):
+        self._login(client_anonimo, db_session)
+
+        resp = client_anonimo.post(
+            "/auth/trocar-senha",
+            json={"senha_atual": "senha-errada", "senha_nova": "senha-nova-456"},
+        )
+
+        assert resp.status_code == 401
+
+    def test_trocar_senha_com_nova_senha_curta_e_rejeitado(self, client_anonimo, db_session):
+        self._login(client_anonimo, db_session)
+
+        resp = client_anonimo.post(
+            "/auth/trocar-senha",
+            json={"senha_atual": "senha-antiga-123", "senha_nova": "curta"},
+        )
+
+        assert resp.status_code == 422
+
+    def test_trocar_senha_sem_sessao_e_rejeitado(self, client_anonimo):
+        resp = client_anonimo.post(
+            "/auth/trocar-senha",
+            json={"senha_atual": "qualquer", "senha_nova": "senha-nova-456"},
+        )
+
+        assert resp.status_code == 401

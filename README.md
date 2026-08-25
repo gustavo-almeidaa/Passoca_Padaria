@@ -37,9 +37,9 @@ PostgreSQL gerenciado via Neon — resolve a decisão em aberto da seção 11
 do `CLAUDE.md` e atende RNF03, que pedia backup), **Incremento 12
 concluído** (autenticação por sessão — login obrigatório em todas as
 rotas, 3 perfis salvos no usuário mas ainda com o mesmo acesso entre si,
-sem permissão diferenciada) e **Incremento 13 em andamento** (deploy —
-`render.yaml` já descreve o serviço no repositório; falta criar a conta e
-o Blueprint no painel do Render — ver seção "Deploy (Render)" abaixo).
+sem permissão diferenciada), **Incremento 13 concluído** (deploy no
+Render — sistema publicado e funcionando) e **Incremento 14 concluído**
+(usuário logado troca a própria senha, em `/auth/trocar-senha`).
 RF01-RF07 do levantamento original estão completos tanto no backend
 quanto no frontend.
 
@@ -140,7 +140,7 @@ uvicorn app.main:app --reload      # sobe a API + frontend em http://127.0.0.1:8
 ```
 
 Isso cria o schema completo (`clientes`, `produtos`, `pedidos`,
-`itens_pedido`, `usuarios`) no banco Postgres do Neon e roda os 102 testes
+`itens_pedido`, `usuarios`) no banco Postgres do Neon e roda os 108 testes
 automatizados (schema + API + service de pedidos + autenticação — cada
 teste usa um SQLite em memória isolado, não toca no Neon). No primeiro
 boot, se `ADMIN_EMAIL`/`ADMIN_SENHA` estiverem configurados e o banco não
@@ -198,6 +198,7 @@ login (cookie) — retornam `401` sem ela.
 | `GET` | `/auth/me` | Dados do usuário logado (frontend usa pra checar sessão) |
 | `GET` | `/auth/usuarios` | Lista usuários cadastrados |
 | `POST` | `/auth/usuarios` | Cria outro usuário (exige estar logado) |
+| `POST` | `/auth/trocar-senha` | Usuário logado troca a própria senha (exige a senha atual) |
 | `POST` | `/clientes` | Cadastrar cliente (RF01) |
 | `GET` | `/clientes` | Listar clientes |
 | `GET` | `/clientes/{id}` | Consultar um cliente |

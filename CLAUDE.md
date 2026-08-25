@@ -217,8 +217,10 @@ implementar, não são RF confirmados):**
   ação que realmente precise disso.
 - Edição de pedido já criado (o levantamento original só previa criar/cancelar).
 - Histórico de pedidos por cliente.
-- Recuperação de senha e limite de tentativas de login (brute-force) — não
-  existem ainda (ver Incremento 12).
+- ~~Trocar a própria senha (logado)~~ — **feito em 2026-08-25 (Incremento
+  14)**: usuário logado troca a senha confirmando a atual, em `/auth/trocar-senha`.
+- Recuperação de senha (esqueci minha senha, sem estar logado) e limite de
+  tentativas de login (brute-force) — ainda não existem.
 
 ## 6. Requisitos não funcionais (RNF)
 

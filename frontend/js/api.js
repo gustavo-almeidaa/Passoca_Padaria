@@ -111,4 +111,9 @@ const api = {
   listarUsuarios: () => apiFetch("/auth/usuarios"),
   criarUsuario: (dados) =>
     apiFetch("/auth/usuarios", { method: "POST", body: JSON.stringify(dados) }),
+  trocarSenha: (senhaAtual, senhaNova) =>
+    apiFetch("/auth/trocar-senha", {
+      method: "POST",
+      body: JSON.stringify({ senha_atual: senhaAtual, senha_nova: senhaNova }),
+    }),
 };

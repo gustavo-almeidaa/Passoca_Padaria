@@ -199,6 +199,26 @@
 
   <section data-secao="usuarios" hidden>
     <div class="card">
+      <h2>Trocar Minha Senha</h2>
+      <p class="sub">Válido pra sua própria conta — confirme a senha atual pra trocar.</p>
+
+      <form id="form-trocar-senha" novalidate>
+        <div class="row">
+          <div>
+            <label for="ts-senha-atual">Senha atual</label>
+            <input id="ts-senha-atual" name="senha_atual" type="password" autocomplete="current-password">
+          </div>
+          <div>
+            <label for="ts-senha-nova">Nova senha</label>
+            <input id="ts-senha-nova" name="senha_nova" type="password" placeholder="Mínimo 8 caracteres" autocomplete="new-password">
+          </div>
+        </div>
+        <button type="submit" class="action" id="botao-trocar-senha">Trocar Senha</button>
+        <p id="feedback-trocar-senha" class="feedback" role="status" hidden></p>
+      </form>
+    </div>
+
+    <div class="card">
       <h2>Cadastro de Usuário</h2>
       <p class="sub">Crie o login de outro atendente ou padeiro(a).</p>
 

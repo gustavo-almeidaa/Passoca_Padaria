@@ -2,7 +2,7 @@
 from app.schemas.cliente import ClienteCreate, ClienteRead
 from app.schemas.pedido import ItemPedidoCreate, ItemPedidoRead, PedidoCreate, PedidoRead
 from app.schemas.produto import ProdutoCreate, ProdutoRead
-from app.schemas.usuario import UsuarioCreate, UsuarioLogin, UsuarioRead
+from app.schemas.usuario import TrocarSenhaRequest, UsuarioCreate, UsuarioLogin, UsuarioRead
 
 __all__ = [
     "ClienteCreate",
@@ -16,4 +16,5 @@ __all__ = [
     "UsuarioCreate",
     "UsuarioRead",
     "UsuarioLogin",
+    "TrocarSenhaRequest",
 ]
