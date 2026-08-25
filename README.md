@@ -11,9 +11,9 @@ entrega.
 ## Stack
 
 - **Backend:** Python + FastAPI
-- **Banco de dados:** SQLite (via SQLAlchemy + Alembic)
+- **Banco de dados:** PostgreSQL gerenciado ([Neon](https://neon.tech)), via SQLAlchemy + Alembic
 - **Frontend:** HTML/JS simples (sem framework)
-- **Testes:** pytest
+- **Testes:** pytest (roda contra SQLite isolado em memória — não depende do Neon)
 
 ## Status do projeto
 
@@ -30,18 +30,20 @@ frontend), **Incremento 8 concluído** (frontend — tela de Pedidos, RF05 e
 RF07, com confirmar sinal/RN02, avançar status/RN04 e cancelar/RF06+RN03)
 **Incremento 9 concluído** (frontend — as 4 telas unificadas em uma
 única página, trocando de seção via JS sem recarregar, com sincronização
-entre abas) e **Incremento 10 concluído** (RF01 ganha campo de endereço
-opcional — texto livre — no cadastro de cliente, com migration). RF01-RF07
-do levantamento original estão completos tanto no backend quanto no
+entre abas), **Incremento 10 concluído** (RF01 ganha campo de endereço
+opcional — texto livre — no cadastro de cliente, com migration) e
+**Incremento 11 concluído** (banco de dados migrado de SQLite para
+PostgreSQL gerenciado via Neon — resolve a decisão em aberto da seção 11
+do `CLAUDE.md` e atende RNF03, que pedia backup). RF01-RF07 do
+levantamento original estão completos tanto no backend quanto no
 frontend.
 
-Autenticação/login por perfil está deliberadamente fora do MVP (ver backlog
-no `CLAUDE.md`, seção 5 e 13). O sistema roda hoje sem autenticação, para
-uso na rede interna da padaria.
-
-O banco de dados de desenvolvimento é SQLite. Uma migração manual para
-PostgreSQL está prevista para o futuro, mas não faz parte do escopo atual
-(ver `CLAUDE.md`, seção 11).
+Autenticação/login por perfil e onde o sistema vai rodar em produção
+(deploy) seguem como as próximas decisões em aberto (ver `CLAUDE.md`,
+seção 11). O sistema roda hoje sem autenticação, para uso na rede interna
+da padaria — e passou a depender de internet, já que o banco agora é
+gerenciado na nuvem (decisão registrada: funcionar offline não é
+requisito do MVP).
 
 ## Estrutura do repositório
 
@@ -77,6 +79,24 @@ O frontend é servido pelo próprio backend (`StaticFiles` montado em `/` no
 FastAPI — ver `backend/app/main.py`) — não precisa de um segundo servidor
 nem de configurar CORS. `uvicorn app.main:app` sobe a API e a UI juntos.
 
+## Configurando o banco (Neon)
+
+O projeto usa [Neon](https://neon.tech) (PostgreSQL gerenciado, free tier)
+como banco. Criar a conta/projeto é uma ação de conta pessoal — cada
+desenvolvedor faz a sua:
+
+1. Crie uma conta em [neon.tech](https://neon.tech) (dá pra entrar com
+   GitHub/Google).
+2. Crie um projeto novo (ex.: `passoca-padaria`) — o Neon já cria um banco
+   padrão dentro dele.
+3. No dashboard do projeto, copie a **Connection string**.
+4. Em `backend/`, rode `cp .env.example .env` (Windows: `copy .env.example .env`)
+   e cole a connection string na linha `DATABASE_URL`, trocando o prefixo
+   `postgresql://` por `postgresql+psycopg://` (driver usado neste
+   projeto) — mantenha o `?sslmode=require` no final.
+5. `.env` nunca é commitado (já está no `.gitignore`) — a connection string
+   tem senha, não compartilhe fora do seu ambiente local.
+
 ## Rodando localmente
 
 ```bash
@@ -86,22 +106,23 @@ source .venv/bin/activate          # Windows: .venv\Scripts\activate
 
 pip install -r requirements-dev.txt
 
-cp .env.example .env               # ajuste se necessário
+# configure o backend/.env com a connection string do Neon (passo acima)
 
-alembic upgrade head               # cria o banco SQLite (app.db) com o schema atual
+alembic upgrade head               # cria o schema no banco do Neon
 
-pytest -v                          # roda a suite de testes
+pytest -v                          # roda a suite de testes (SQLite isolado, não usa o Neon)
 
 uvicorn app.main:app --reload      # sobe a API + frontend em http://127.0.0.1:8000
 ```
 
 Isso cria o schema completo (`clientes`, `produtos`, `pedidos`,
-`itens_pedido`) no arquivo `backend/app.db` (ignorado pelo git) e roda os
-79 testes automatizados (schema + API + service de pedidos). Com o servidor
-no ar: o sistema fica em `http://127.0.0.1:8000/`, com as 4 telas
-(Clientes, Produtos, Novo Pedido, Pedidos) acessíveis pela navegação no
-topo — trocar de aba não recarrega a página — e a documentação interativa
-(Swagger) em `http://127.0.0.1:8000/docs`.
+`itens_pedido`) no banco Postgres do Neon e roda os 82 testes automatizados
+(schema + API + service de pedidos — cada teste usa um SQLite em memória
+isolado, não toca no Neon). Com o servidor no ar: o sistema fica em
+`http://127.0.0.1:8000/`, com as 4 telas (Clientes, Produtos, Novo Pedido,
+Pedidos) acessíveis pela navegação no topo — trocar de aba não recarrega a
+página — e a documentação interativa (Swagger) em
+`http://127.0.0.1:8000/docs`.
 
 ## Endpoints disponíveis
 

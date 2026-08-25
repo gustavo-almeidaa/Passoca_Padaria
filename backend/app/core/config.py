@@ -9,8 +9,11 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    # SQLite por padrão para desenvolvimento local (decisão da seção 11 do
-    # CLAUDE.md). O caminho é relativo ao diretório de onde o processo roda.
+    # Fallback só para quando não existe .env (ex.: clone novo, antes de
+    # configurar). O banco "oficial" do projeto é PostgreSQL gerenciado via
+    # Neon (decisão da seção 11 do CLAUDE.md, 2026-08-25) — configurado por
+    # DATABASE_URL no .env de cada ambiente. Este default nunca deve ser
+    # usado em produção.
     database_url: str = "sqlite:///./app.db"
 
     model_config = SettingsConfigDict(

@@ -223,7 +223,7 @@ engenharia atual — use a coluna direita como meta de implementação.
 |---|---|---|
 | RNF01 | Interface simples para quem não tem prática com informática | UI com poucos cliques por tarefa, mensagens de erro em português claro, sem jargão técnico |
 | RNF02 | Resposta em menos de 2s | Endpoints de API com p95 < 500ms em uso normal (poucos usuários simultâneos) |
-| RNF03 | Dados salvos com segurança | Persistência em banco relacional com backup; nunca perder um pedido confirmado |
+| RNF03 | Dados salvos com segurança | Persistência em banco relacional com backup; nunca perder um pedido confirmado — **atendido** desde 2026-08-25 via PostgreSQL gerenciado (Neon), que inclui backup/point-in-time restore |
 | RNF04 | Rodar em hardware comum | Rodar em navegador comum (não exigir app nativo instalado); mobile-friendly é desejável, pois atendente pode usar celular |
 
 **Adicionar como requisito real (não existia no acadêmico):**
@@ -323,13 +323,22 @@ Não escolha estes itens sozinho sem perguntar primeiro, mesmo que pareça
 óbvio. Proponha opções (com prós/contras) e peça confirmação — isso também
 é parte da postura crítica da seção 1.2, não só uma formalidade.
 
-- [ ] Stack de backend (ex.: Python/FastAPI, Node/Express, outro).
-- [ ] Banco de dados (ex.: PostgreSQL, SQLite para começar, MySQL).
-- [ ] Stack de frontend (reaproveitar HTML/JS simples vs. framework como React).
+- [x] Stack de backend — **Python/FastAPI**, decidido no Incremento 1.
+- [x] Banco de dados — **PostgreSQL gerenciado (Neon)**, decidido em
+      2026-08-25. Antes rodava em SQLite local; a migração trocou só a
+      `DATABASE_URL` (ver `backend/.env.example`) — nenhuma query
+      específica de SQLite existia no código, então o schema/ORM não
+      mudou. SQLite continua disponível como opção só para
+      desenvolvimento local sem internet, mas deixou de ser o banco
+      "oficial" do projeto.
+- [x] Stack de frontend — **HTML/JS simples, sem framework**, decidido
+      no Incremento 5.
 - [ ] Autenticação: existe login? Quantos perfis de usuário?
 - [ ] Onde vai rodar: local na padaria, VPS, serviço gerenciado (Railway,
-      Render, etc.)?
-- [ ] Necessidade de funcionar offline (conexão instável na padaria)?
+      Render, etc.)? — próxima decisão em aberto (deploy).
+- [x] Necessidade de funcionar offline — **não é requisito do MVP**,
+      decidido em 2026-08-25 junto com a escolha do banco gerenciado
+      (que já pressupõe internet disponível).
 
 ## 12. Glossário
 
