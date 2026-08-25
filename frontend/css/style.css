@@ -133,6 +133,41 @@ input:focus {
   border-color: var(--crust);
 }
 
+select {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 6px;
+  border: 1.5px solid var(--border);
+  background: #fff;
+  font-family: 'Karla', sans-serif;
+  font-size: 0.98rem;
+  color: var(--ink);
+}
+select:focus {
+  outline: none;
+  border-color: var(--crust);
+}
+select:invalid { color: var(--ink-soft); }
+
+.checkbox-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+  font-size: 0.9rem;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: normal;
+  color: var(--ink);
+  cursor: pointer;
+}
+.checkbox-line input[type="checkbox"] {
+  width: 17px;
+  height: 17px;
+  accent-color: var(--crust);
+  cursor: pointer;
+}
+
 .row { display: flex; gap: 16px; }
 .row > div { flex: 1; }
 
@@ -188,6 +223,39 @@ button.action:focus-visible { outline: 3px solid var(--green); outline-offset: 2
   font-size: 0.88rem;
 }
 .chip b { color: var(--crust); }
+
+.produto-list { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
+.produto-item {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 14px;
+}
+.produto-item__principal {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+.produto-item__principal b { color: var(--wood); }
+.produto-item__preco { color: var(--crust); font-weight: 700; white-space: nowrap; }
+.produto-item__meta {
+  color: var(--ink-soft);
+  font-size: 0.85rem;
+  margin-top: 2px;
+}
+.selo {
+  display: inline-block;
+  margin-left: 8px;
+  background: var(--gold);
+  color: var(--wood);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .03em;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
 
 footer {
   text-align: center;

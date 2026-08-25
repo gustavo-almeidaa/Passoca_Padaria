@@ -74,4 +74,7 @@ const api = {
   listarClientes: () => apiFetch("/clientes"),
   criarCliente: (dados) =>
     apiFetch("/clientes", { method: "POST", body: JSON.stringify(dados) }),
+  listarProdutos: () => apiFetch("/produtos"),
+  criarProduto: (dados) =>
+    apiFetch("/produtos", { method: "POST", body: JSON.stringify(dados) }),
 };
