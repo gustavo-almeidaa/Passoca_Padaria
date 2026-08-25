@@ -35,6 +35,7 @@ def criar_pedido(payload: PedidoCreate, db: Session = Depends(get_db)) -> Pedido
     except (
         pedidos_service.ProdutoInvalido,
         pedidos_service.AntecedenciaMinimaNaoRespeitada,
+        pedidos_service.AntecedenciaMaximaExcedida,
     ) as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 

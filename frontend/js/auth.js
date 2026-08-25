@@ -40,14 +40,27 @@ document.addEventListener("DOMContentLoaded", () => {
   function mostrarApp(usuario) {
     telaLogin.hidden = true;
     appShell.hidden = false;
+    // Outras telas (usuarios.js) usam isso pra saber quem está logado —
+    // ex.: não oferecer o botão "Desativar" na própria linha da lista.
+    window.usuarioAtual = usuario;
     const perfil = ROTULOS_PERFIL[usuario.perfil] || usuario.perfil;
     usuarioInfo.textContent = `Olá, ${usuario.nome} (${perfil})`;
+
+    // Incremento 15: a aba "Usuários" (e tudo dentro dela — cadastro,
+    // trocar senha, lista) é exclusiva da proprietária — decisão do
+    // usuário, "pra evitar erro ou troca indesejada". O backend já barra
+    // isso com 403 de qualquer forma; esconder o botão aqui é só não
+    // oferecer uma opção que ia dar erro na cara de quem não pode usar.
+    const abaUsuarios = document.querySelector('[data-tab-alvo="usuarios"]');
+    if (abaUsuarios) abaUsuarios.hidden = usuario.perfil !== "proprietaria";
+
     if (window.ativarTela) window.ativarTela("clientes");
   }
 
   function mostrarLogin() {
     appShell.hidden = true;
     telaLogin.hidden = false;
+    window.usuarioAtual = null;
   }
 
   formLogin.addEventListener("submit", async (evento) => {

@@ -90,6 +90,33 @@ class TestCriarPedidoRN01:
             )
 
 
+class TestCriarPedidoAntecedenciaMaxima:
+    """Teto realista de 90 dias (decisão do usuário, 2026-08-25)."""
+
+    def test_aceita_entrega_com_exatamente_90_dias_de_folga(self, db_session):
+        cliente = _criar_cliente(db_session)
+        produto = _criar_produto(db_session)
+        agora = datetime(2026, 1, 1, 10, 0)
+        entrega = agora + timedelta(days=90)
+
+        pedido = pedidos_service.criar_pedido(
+            db_session, _payload(cliente.id, produto.id, entrega), agora=agora
+        )
+
+        assert pedido.id is not None
+
+    def test_rejeita_entrega_com_mais_de_90_dias_de_folga(self, db_session):
+        cliente = _criar_cliente(db_session)
+        produto = _criar_produto(db_session)
+        agora = datetime(2026, 1, 1, 10, 0)
+        entrega = agora + timedelta(days=91)
+
+        with pytest.raises(pedidos_service.AntecedenciaMaximaExcedida):
+            pedidos_service.criar_pedido(
+                db_session, _payload(cliente.id, produto.id, entrega), agora=agora
+            )
+
+
 class TestCriarPedidoValidacoes:
     def test_cliente_inexistente_gera_erro_especifico(self, db_session):
         produto = _criar_produto(db_session)

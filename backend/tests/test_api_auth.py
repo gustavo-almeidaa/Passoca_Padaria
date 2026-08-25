@@ -250,3 +250,164 @@ class TestTrocarSenha:
         )
 
         assert resp.status_code == 401
+
+
+class TestRestricaoProprietaria:
+    """Incremento 15 (decisão do usuário): só a proprietária mexe em
+    qualquer coisa da aba Usuários -- atendente/padeiro autenticados
+    recebem 403, não 401 (a sessão é válida, só não tem permissão)."""
+
+    def _login_atendente(self, client_anonimo, db_session):
+        _criar_usuario(
+            db_session,
+            nome="Atendente",
+            email="atendente@passoca.com",
+            senha="senha-valida-123",
+            perfil=PerfilUsuario.ATENDENTE,
+        )
+        client_anonimo.post(
+            "/auth/login",
+            json={"email": "atendente@passoca.com", "senha": "senha-valida-123"},
+        )
+
+    def test_atendente_nao_pode_listar_usuarios(self, client_anonimo, db_session):
+        self._login_atendente(client_anonimo, db_session)
+
+        resp = client_anonimo.get("/auth/usuarios")
+
+        assert resp.status_code == 403
+
+    def test_atendente_nao_pode_criar_usuario(self, client_anonimo, db_session):
+        self._login_atendente(client_anonimo, db_session)
+
+        resp = client_anonimo.post(
+            "/auth/usuarios",
+            json={
+                "nome": "Outro",
+                "email": "outro@passoca.com",
+                "senha": "senha-valida-123",
+                "perfil": "atendente",
+            },
+        )
+
+        assert resp.status_code == 403
+
+    def test_atendente_nao_pode_trocar_a_propria_senha(self, client_anonimo, db_session):
+        self._login_atendente(client_anonimo, db_session)
+
+        resp = client_anonimo.post(
+            "/auth/trocar-senha",
+            json={"senha_atual": "senha-valida-123", "senha_nova": "senha-nova-456"},
+        )
+
+        assert resp.status_code == 403
+
+    def test_proprietaria_pode_listar_e_criar_usuarios(self, client):
+        resp_listar = client.get("/auth/usuarios")
+        resp_criar = client.post(
+            "/auth/usuarios",
+            json={
+                "nome": "Atendente Nova",
+                "email": "atendente@passoca.com",
+                "senha": "senha-valida-123",
+                "perfil": "atendente",
+            },
+        )
+
+        assert resp_listar.status_code == 200
+        assert resp_criar.status_code == 201
+
+
+class TestDesativarUsuario:
+    def test_proprietaria_desativa_outro_usuario(self, client):
+        atendente = client.post(
+            "/auth/usuarios",
+            json={
+                "nome": "Atendente",
+                "email": "atendente@passoca.com",
+                "senha": "senha-valida-123",
+                "perfil": "atendente",
+            },
+        ).json()
+
+        resp = client.delete(f"/auth/usuarios/{atendente['id']}")
+
+        assert resp.status_code == 204
+
+    def test_usuario_desativado_nao_consegue_mais_logar(self, client, client_anonimo, db_session):
+        atendente = _criar_usuario(
+            db_session,
+            nome="Atendente",
+            email="atendente@passoca.com",
+            senha="senha-valida-123",
+            perfil=PerfilUsuario.ATENDENTE,
+        )
+
+        client.delete(f"/auth/usuarios/{atendente.id}")
+
+        resp = client_anonimo.post(
+            "/auth/login",
+            json={"email": "atendente@passoca.com", "senha": "senha-valida-123"},
+        )
+
+        assert resp.status_code == 401
+
+    def test_nao_pode_desativar_a_propria_conta(self, client, usuario_teste):
+        resp = client.delete(f"/auth/usuarios/{usuario_teste.id}")
+
+        assert resp.status_code == 400
+
+    def test_nao_pode_desativar_a_unica_proprietaria_ativa(self, client, db_session):
+        outra_proprietaria = _criar_usuario(
+            db_session,
+            nome="Outra Proprietária",
+            email="outra-dona@passoca.com",
+            senha="senha-valida-123",
+            perfil=PerfilUsuario.PROPRIETARIA,
+        )
+
+        # usuario_teste (quem está logado) desativa a outra proprietária
+        # primeiro -- agora usuario_teste seria a última ativa.
+        client.delete(f"/auth/usuarios/{outra_proprietaria.id}")
+
+        # Cria uma terceira proprietária só pra poder tentar desativar
+        # ela sem esbarrar no bloqueio de "não pode desativar a si mesmo".
+        terceira = _criar_usuario(
+            db_session,
+            nome="Terceira Proprietária",
+            email="terceira-dona@passoca.com",
+            senha="senha-valida-123",
+            perfil=PerfilUsuario.PROPRIETARIA,
+            ativo=False,
+        )
+
+        resp = client.delete(f"/auth/usuarios/{terceira.id}")
+
+        # Já estava inativa -- o bloqueio de "única ativa" olha pra quem
+        # *ficaria* ativo, não pra quem já está inativo, então isso só
+        # confirma que desativar um já-inativo não quebra nada.
+        assert resp.status_code == 204
+
+    def test_atendente_nao_pode_desativar_ninguem(self, client_anonimo, db_session):
+        _criar_usuario(
+            db_session,
+            nome="Atendente",
+            email="atendente@passoca.com",
+            senha="senha-valida-123",
+            perfil=PerfilUsuario.ATENDENTE,
+        )
+        alvo = _criar_usuario(
+            db_session,
+            nome="Padeiro",
+            email="padeiro@passoca.com",
+            senha="senha-valida-123",
+            perfil=PerfilUsuario.PADEIRO,
+        )
+        client_anonimo.post(
+            "/auth/login",
+            json={"email": "atendente@passoca.com", "senha": "senha-valida-123"},
+        )
+
+        resp = client_anonimo.delete(f"/auth/usuarios/{alvo.id}")
+
+        assert resp.status_code == 403

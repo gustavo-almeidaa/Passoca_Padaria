@@ -46,3 +46,23 @@ def obter_produto(produto_id: int, db: Session = Depends(get_db)) -> Produto:
     if produto is None:
         raise HTTPException(status_code=404, detail="Produto não encontrado.")
     return produto
+
+
+@router.put("/{produto_id}", response_model=ProdutoRead)
+def editar_produto(
+    produto_id: int, payload: ProdutoCreate, db: Session = Depends(get_db)
+) -> Produto:
+    """Edita um produto já cadastrado (todos os campos — decisão do
+    usuário, 2026-08-25). Não afeta pedidos já feitos: `preco_unitario`
+    do item é um snapshot independente (ver models/item_pedido.py).
+    """
+    produto = db.get(Produto, produto_id)
+    if produto is None:
+        raise HTTPException(status_code=404, detail="Produto não encontrado.")
+
+    for campo, valor in payload.model_dump().items():
+        setattr(produto, campo, valor)
+
+    db.commit()
+    db.refresh(produto)
+    return produto

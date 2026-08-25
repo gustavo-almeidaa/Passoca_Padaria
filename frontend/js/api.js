@@ -93,6 +93,8 @@ const api = {
   },
   criarProduto: (dados) =>
     apiFetch("/produtos", { method: "POST", body: JSON.stringify(dados) }),
+  editarProduto: (id, dados) =>
+    apiFetch(`/produtos/${id}`, { method: "PUT", body: JSON.stringify(dados) }),
   criarPedido: (dados) =>
     apiFetch("/pedidos", { method: "POST", body: JSON.stringify(dados) }),
   listarPedidos: (opcoes = {}) => {
@@ -111,6 +113,7 @@ const api = {
   listarUsuarios: () => apiFetch("/auth/usuarios"),
   criarUsuario: (dados) =>
     apiFetch("/auth/usuarios", { method: "POST", body: JSON.stringify(dados) }),
+  desativarUsuario: (id) => apiFetch(`/auth/usuarios/${id}`, { method: "DELETE" }),
   trocarSenha: (senhaAtual, senhaNova) =>
     apiFetch("/auth/trocar-senha", {
       method: "POST",

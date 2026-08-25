@@ -20,9 +20,13 @@ class ItemPedidoCreate(BaseModel):
 
     @field_validator("quantidade")
     @classmethod
-    def quantidade_positiva(cls, v: int) -> int:
+    def quantidade_dentro_do_limite(cls, v: int) -> int:
+        # Teto realista (decisão do usuário, 2026-08-25) — evita um pedido
+        # de "9999999 pães" por engano de digitação.
         if v <= 0:
             raise ValueError("A quantidade de cada item precisa ser maior que zero.")
+        if v > 999:
+            raise ValueError("A quantidade de cada item não pode passar de 999.")
         return v
 
 

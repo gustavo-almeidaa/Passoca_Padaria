@@ -84,6 +84,13 @@ body {
   text-decoration: underline;
 }
 .link-button:hover { color: var(--paper); }
+/* Variante pra usar dentro de cards claros (o padrão é pensado pra
+   fundo escuro, tipo a topbar). */
+.link-button--dark {
+  color: var(--crust);
+  margin-left: 10px;
+}
+.link-button--dark:hover { color: var(--red); }
 
 header {
   background: linear-gradient(180deg, var(--wood-light), var(--wood));

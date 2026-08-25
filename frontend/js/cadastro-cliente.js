@@ -8,6 +8,11 @@ document.addEventListener("DOMContentLoaded", () => {
   const inputEndereco = document.getElementById("c-endereco");
   const listaClientes = document.getElementById("lista-clientes");
 
+  // Incremento 15: máscara (43) 99999-9999 conforme digita.
+  inputTelefone.addEventListener("input", () => {
+    inputTelefone.value = formatarTelefone(inputTelefone.value);
+  });
+
   // Incremento 9: a tela agora é uma seção da página única — recarrega a
   // lista sempre que o atendente volta pra essa aba, pra pegar clientes
   // cadastrados enquanto ele estava em outra tela. Incremento 12: não tem

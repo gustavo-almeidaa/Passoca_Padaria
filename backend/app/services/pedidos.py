@@ -23,6 +23,10 @@ from app.schemas.pedido import PedidoCreate
 # RN01 — antecedência mínima entre a criação do pedido e a data/hora de entrega.
 ANTECEDENCIA_MINIMA = timedelta(hours=24)
 
+# Teto realista (decisão do usuário, 2026-08-25) — evita agendar um pedido
+# décadas no futuro por erro de digitação (ex.: ano trocado sem querer).
+ANTECEDENCIA_MAXIMA = timedelta(days=90)
+
 # RN03 — janela mínima antes da entrega em que o cancelamento ainda é aceito.
 JANELA_CANCELAMENTO = timedelta(hours=12)
 
@@ -45,6 +49,10 @@ class ProdutoInvalido(Exception):
 
 class AntecedenciaMinimaNaoRespeitada(Exception):
     """RN01: entrega marcada com menos de 24h de antecedência."""
+
+
+class AntecedenciaMaximaExcedida(Exception):
+    """Entrega marcada com mais de 90 dias de antecedência (teto realista)."""
 
 
 class PedidoNaoEncontrado(Exception):
@@ -86,6 +94,10 @@ def criar_pedido(
         raise AntecedenciaMinimaNaoRespeitada(
             "Escolha uma data e horário de entrega com pelo menos 24h de "
             "antecedência a partir de agora."
+        )
+    if momento_entrega - agora > ANTECEDENCIA_MAXIMA:
+        raise AntecedenciaMaximaExcedida(
+            "Escolha uma data de entrega em até 90 dias a partir de hoje."
         )
 
     itens: list[ItemPedido] = []

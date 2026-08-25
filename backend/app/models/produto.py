@@ -34,6 +34,10 @@ class Produto(Base):
     __tablename__ = "produtos"
     __table_args__ = (
         CheckConstraint("preco >= 0", name="ck_produtos_preco_nao_negativo"),
+        # Teto realista (decisão do usuário, 2026-08-25) — defesa em
+        # profundidade: o schema Pydantic já valida isso, mas o constraint
+        # no banco garante mesmo se algo escrever direto via SQL/script.
+        CheckConstraint("preco <= 999.99", name="ck_produtos_preco_teto"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)

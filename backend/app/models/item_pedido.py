@@ -18,6 +18,9 @@ class ItemPedido(Base):
     __tablename__ = "itens_pedido"
     __table_args__ = (
         CheckConstraint("quantidade > 0", name="ck_itens_pedido_quantidade_positiva"),
+        # Teto realista (decisão do usuário, 2026-08-25) — defesa em
+        # profundidade, mesma lógica do teto de preço em Produto.
+        CheckConstraint("quantidade <= 999", name="ck_itens_pedido_quantidade_teto"),
         CheckConstraint(
             "preco_unitario >= 0", name="ck_itens_pedido_preco_nao_negativo"
         ),

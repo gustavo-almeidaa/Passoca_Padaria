@@ -1,8 +1,11 @@
-/* Tela de Cadastro de Produto — RF02. */
+/* Tela de Cadastro/Edição de Produto — RF02 + edição (Incremento 15). */
 document.addEventListener("DOMContentLoaded", () => {
   const form = document.getElementById("form-produto");
   const feedback = document.getElementById("feedback-produto");
   const botaoSalvar = document.getElementById("botao-salvar-produto");
+  const botaoCancelarEdicao = document.getElementById("botao-cancelar-edicao-produto");
+  const tituloForm = document.getElementById("titulo-form-produto");
+  const inputId = document.getElementById("p-id");
   const inputNome = document.getElementById("p-nome");
   const selectCategoria = document.getElementById("p-categoria");
   const selectUnidade = document.getElementById("p-unidade");
@@ -24,6 +27,14 @@ document.addEventListener("DOMContentLoaded", () => {
     cento: "Cento",
   };
 
+  let produtosCache = [];
+
+  // Incremento 15: máscara "45,90" conforme digita (limitada ao teto de
+  // R$ 999,99 do backend — ver formatarPrecoDigitado em ui.js).
+  inputPreco.addEventListener("input", () => {
+    inputPreco.value = formatarPrecoDigitado(inputPreco.value);
+  });
+
   // Incremento 9: a tela agora é uma seção da página única — recarrega a
   // lista sempre que o atendente volta pra essa aba. Incremento 12: sem
   // carga eager aqui, ver nota equivalente em cadastro-cliente.js.
@@ -44,23 +55,32 @@ document.addEventListener("DOMContentLoaded", () => {
       mostrarFeedback(feedback, "Preencha nome, categoria, unidade e preço do produto.", "erro");
       return;
     }
-    const preco = Number(precoTexto);
-    if (Number.isNaN(preco) || preco < 0) {
+    const preco = paraNumeroDecimal(precoTexto);
+    if (preco < 0) {
       mostrarFeedback(feedback, "Informe um preço válido (maior ou igual a zero).", "erro");
       return;
     }
 
+    const dados = {
+      nome,
+      categoria,
+      unidade,
+      preco,
+      personalizavel: inputPersonalizavel.checked,
+    };
+
+    const idEmEdicao = inputId.value;
+
     definirCarregando(botaoSalvar, true);
     try {
-      await api.criarProduto({
-        nome,
-        categoria,
-        unidade,
-        preco,
-        personalizavel: inputPersonalizavel.checked,
-      });
-      form.reset();
-      mostrarFeedback(feedback, "Produto salvo com sucesso.", "sucesso");
+      if (idEmEdicao) {
+        await api.editarProduto(idEmEdicao, { ...dados, ativo: true });
+        mostrarFeedback(feedback, "Produto atualizado com sucesso.", "sucesso");
+      } else {
+        await api.criarProduto(dados);
+        mostrarFeedback(feedback, "Produto salvo com sucesso.", "sucesso");
+      }
+      sairDoModoEdicao();
       inputNome.focus();
       await carregarProdutos();
     } catch (erro) {
@@ -70,11 +90,40 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
+  botaoCancelarEdicao.addEventListener("click", () => {
+    sairDoModoEdicao();
+    limparFeedback(feedback);
+  });
+
+  function entrarEmModoEdicao(produto) {
+    inputId.value = produto.id;
+    inputNome.value = produto.nome;
+    selectCategoria.value = produto.categoria;
+    selectUnidade.value = produto.unidade;
+    inputPreco.value = Number(produto.preco).toFixed(2).replace(".", ",");
+    inputPersonalizavel.checked = produto.personalizavel;
+
+    tituloForm.textContent = `Editando: ${produto.nome}`;
+    botaoSalvar.textContent = "Salvar Alterações";
+    botaoSalvar.dataset.textoOriginal = "Salvar Alterações";
+    botaoCancelarEdicao.hidden = false;
+    inputNome.focus();
+  }
+
+  function sairDoModoEdicao() {
+    form.reset();
+    inputId.value = "";
+    tituloForm.textContent = "Cadastro de Produto";
+    botaoSalvar.textContent = "Salvar Produto";
+    botaoSalvar.dataset.textoOriginal = "Salvar Produto";
+    botaoCancelarEdicao.hidden = true;
+  }
+
   async function carregarProdutos() {
     listaProdutos.innerHTML = '<p class="empty">Carregando…</p>';
     try {
-      const produtos = await api.listarProdutos();
-      renderProdutos(produtos);
+      produtosCache = await api.listarProdutos();
+      renderProdutos(produtosCache);
     } catch (erro) {
       listaProdutos.innerHTML = "";
       mostrarFeedback(feedback, erro.message, "erro");
@@ -97,15 +146,26 @@ document.addEventListener("DOMContentLoaded", () => {
         const selo = p.personalizavel
           ? '<span class="selo">Personalizável</span>'
           : "";
+        const inativo = !p.ativo ? '<span class="selo selo--inativo">Inativo</span>' : "";
         return `
           <div class="produto-item">
             <div class="produto-item__principal">
               <b>${escapeHtml(p.nome)}</b>
               <span class="produto-item__preco">${preco}</span>
             </div>
-            <div class="produto-item__meta">${categoria} · ${unidade}${selo}</div>
+            <div class="produto-item__meta">
+              ${categoria} · ${unidade}${selo}${inativo}
+              <button type="button" class="link-button link-button--dark" data-editar-produto="${p.id}">Editar</button>
+            </div>
           </div>`;
       })
       .join("");
+
+    listaProdutos.querySelectorAll("[data-editar-produto]").forEach((botao) => {
+      botao.addEventListener("click", () => {
+        const produto = produtosCache.find((p) => p.id === Number(botao.dataset.editarProduto));
+        if (produto) entrarEmModoEdicao(produto);
+      });
+    });
   }
 });

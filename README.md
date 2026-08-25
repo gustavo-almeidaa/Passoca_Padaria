@@ -17,31 +17,25 @@ entrega.
 
 ## Status do projeto
 
-🚧 Em desenvolvimento — **Incremento 1 concluído** (schema + migrations +
-testes), **Incremento 2 concluído** (API REST de Cliente e Produto — RF01,
-RF02), **Incremento 3 concluído** (registro de pedido — RF03, RF04 — com
-RN01 aplicada no backend), **Incremento 4 concluído** (ciclo de vida do
-pedido — RF06 cancelar, RF07 listar por período, com RN02, RN03 e RN04
-aplicadas no backend), **Incremento 5 concluído** (frontend — infraestrutura
-mínima e tela de cadastro de cliente, RF01), **Incremento 6 concluído**
-(frontend — tela de cadastro de produto, RF02), **Incremento 7 concluído**
-(frontend — tela de novo pedido, RF03/RF04, com RN01 replicada no
-frontend), **Incremento 8 concluído** (frontend — tela de Pedidos, RF05 e
-RF07, com confirmar sinal/RN02, avançar status/RN04 e cancelar/RF06+RN03)
-**Incremento 9 concluído** (frontend — as 4 telas unificadas em uma
-única página, trocando de seção via JS sem recarregar, com sincronização
-entre abas), **Incremento 10 concluído** (RF01 ganha campo de endereço
-opcional — texto livre — no cadastro de cliente, com migration) e
-**Incremento 11 concluído** (banco de dados migrado de SQLite para
-PostgreSQL gerenciado via Neon — resolve a decisão em aberto da seção 11
-do `CLAUDE.md` e atende RNF03, que pedia backup), **Incremento 12
-concluído** (autenticação por sessão — login obrigatório em todas as
-rotas, 3 perfis salvos no usuário mas ainda com o mesmo acesso entre si,
-sem permissão diferenciada), **Incremento 13 concluído** (deploy no
-Render — sistema publicado e funcionando) e **Incremento 14 concluído**
-(usuário logado troca a própria senha, em `/auth/trocar-senha`).
-RF01-RF07 do levantamento original estão completos tanto no backend
-quanto no frontend.
+🚧 Em desenvolvimento. **Incrementos 1-11 concluídos**: schema/migrations,
+API REST completa de Cliente/Produto/Pedido (RF01-RF07, RN01-RN05
+aplicadas no backend), frontend unificado numa página só, endereço
+opcional no cliente, e banco migrado de SQLite para PostgreSQL gerenciado
+via Neon (resolve RNF03, backup). RF01-RF07 do levantamento original estão
+completos tanto no backend quanto no frontend.
+
+Incrementos recentes:
+- **12 — Autenticação:** login obrigatório por sessão em todas as rotas.
+- **13 — Deploy:** sistema publicado no Render (plano free).
+- **14 — Trocar senha:** usuário logado troca a própria senha.
+- **15 — Ajustes de uso real** (2026-08-25): máscaras de telefone/preço,
+  editar produto já cadastrado, limites realistas (RN05 — preço até
+  R$ 999,99, quantidade até 999, entrega até 90 dias de antecedência),
+  filtro padrão da aba Pedidos mostrando a semana a partir de hoje, e
+  restrição da aba Usuários (criar/excluir/trocar senha) só pra
+  proprietária — "excluir" foi implementado como desativar
+  (`ativo=false`), não apagar de vez; ver `CLAUDE.md`, seção 5, pra o
+  motivo dessa escolha.
 
 O sistema passou a depender de internet, já que o banco agora é gerenciado
 na nuvem (decisão registrada: funcionar offline não é requisito do MVP).
@@ -54,7 +48,7 @@ Passoca_Padaria/
 │   ├── app/
 │   │   ├── models/       # modelos SQLAlchemy (Cliente, Produto, Pedido, ItemPedido, Usuario)
 │   │   ├── schemas/      # schemas Pydantic — Cliente, Produto, Pedido e Usuario
-│   │   ├── services/     # regras de negócio — RN01-RN04 aplicadas no backend
+│   │   ├── services/     # regras de negócio — RN01-RN05 aplicadas no backend
 │   │   ├── api/          # rotas FastAPI — /clientes, /produtos, /pedidos, /auth
 │   │   │                 # + deps.py (dependência de autenticação)
 │   │   ├── main.py       # ponto de entrada da API (app FastAPI)
@@ -109,7 +103,7 @@ o `backend/.env` precisa de:
 | Variável | Para quê |
 |---|---|
 | `SESSION_SECRET_KEY` | Assina o cookie de sessão. Gere uma própria — nunca reaproveite a de outro ambiente: `python -c "import secrets; print(secrets.token_hex(32))"` |
-| `ADMIN_NOME`, `ADMIN_EMAIL`, `ADMIN_SENHA` | Criam a conta da proprietária automaticamente no primeiro boot, **só se o banco ainda não tiver nenhum usuário**. Troque a senha depois de logar pela primeira vez — não existe fluxo de troca de senha ainda, então por enquanto isso é feito direto no banco. |
+| `ADMIN_NOME`, `ADMIN_EMAIL`, `ADMIN_SENHA` | Criam a conta da proprietária automaticamente no primeiro boot, **só se o banco ainda não tiver nenhum usuário**. Troque a senha depois de logar pela primeira vez, pela aba "Usuários" → "Trocar Minha Senha" (Incremento 14). |
 
 Sem `ADMIN_EMAIL`/`ADMIN_SENHA` configurados, o servidor sobe normalmente,
 mas ninguém consegue logar (fica um aviso no log). Usuários adicionais
@@ -140,7 +134,7 @@ uvicorn app.main:app --reload      # sobe a API + frontend em http://127.0.0.1:8
 ```
 
 Isso cria o schema completo (`clientes`, `produtos`, `pedidos`,
-`itens_pedido`, `usuarios`) no banco Postgres do Neon e roda os 108 testes
+`itens_pedido`, `usuarios`) no banco Postgres do Neon e roda os 128 testes
 automatizados (schema + API + service de pedidos + autenticação — cada
 teste usa um SQLite em memória isolado, não toca no Neon). No primeiro
 boot, se `ADMIN_EMAIL`/`ADMIN_SENHA` estiverem configurados e o banco não
@@ -196,15 +190,17 @@ login (cookie) — retornam `401` sem ela.
 | `POST` | `/auth/login` | Login (e-mail + senha) — cria a sessão |
 | `POST` | `/auth/logout` | Encerra a sessão |
 | `GET` | `/auth/me` | Dados do usuário logado (frontend usa pra checar sessão) |
-| `GET` | `/auth/usuarios` | Lista usuários cadastrados |
-| `POST` | `/auth/usuarios` | Cria outro usuário (exige estar logado) |
-| `POST` | `/auth/trocar-senha` | Usuário logado troca a própria senha (exige a senha atual) |
+| `GET` | `/auth/usuarios` | Lista usuários cadastrados — **só proprietária** |
+| `POST` | `/auth/usuarios` | Cria outro usuário — **só proprietária** |
+| `DELETE` | `/auth/usuarios/{id}` | Desativa um usuário (`ativo=false`, não apaga) — **só proprietária** |
+| `POST` | `/auth/trocar-senha` | Troca a própria senha (exige a senha atual) — **só proprietária** |
 | `POST` | `/clientes` | Cadastrar cliente (RF01) |
 | `GET` | `/clientes` | Listar clientes |
 | `GET` | `/clientes/{id}` | Consultar um cliente |
 | `POST` | `/produtos` | Cadastrar produto (RF02) |
 | `GET` | `/produtos?ativo=true` | Listar produtos (filtro opcional por ativo) |
 | `GET` | `/produtos/{id}` | Consultar um produto |
+| `PUT` | `/produtos/{id}` | Editar produto já cadastrado (todos os campos) |
 | `POST` | `/pedidos` | Registrar pedido (RF03, RF04) — aplica RN01 |
 | `GET` | `/pedidos?data_inicio=&data_fim=` | Listar pedidos por período/dia (RF07) |
 | `GET` | `/pedidos/{id}` | Consultar um pedido, com seus itens (RF05) |
@@ -220,5 +216,6 @@ login (cookie) — retornam `401` sem ela.
 | RN02 | Item personalizável exige sinal confirmado antes de sair de "recebido" |
 | RN03 | Cancelamento só é permitido até 12h antes da entrega |
 | RN04 | Status segue máquina de estados estrita: recebido → em_producao → pronto → entregue |
+| RN05 | Limites realistas: preço até R$ 999,99, quantidade por item até 999, entrega até 90 dias de antecedência |
 
 Detalhes completos em [`CLAUDE.md`](./CLAUDE.md).

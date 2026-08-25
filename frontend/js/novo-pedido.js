@@ -35,9 +35,12 @@ document.addEventListener("DOMContentLoaded", () => {
   let produtosDisponiveis = [];
   const pedidosRecentes = [];
 
-  // Bloqueia datas passadas de cara; o cálculo fino de 24h (que também
-  // depende do horário escolhido) é feito no submit.
+  // Bloqueia datas fora da janela aceita de cara (min/max são só
+  // aproximação por dia — o cálculo fino de 24h/90 dias, que também
+  // depende do horário escolhido, é feito no submit). Teto de 90 dias:
+  // decisão do usuário, 2026-08-25.
   inputData.min = new Date().toISOString().slice(0, 10);
+  inputData.max = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
   // Incremento 9: a tela agora é uma seção da página única — ao voltar pra
   // essa aba, recarrega clientes/produtos (podem ter sido cadastrados nas
@@ -144,7 +147,7 @@ document.addEventListener("DOMContentLoaded", () => {
     linha.className = "item-pedido-row";
     linha.innerHTML = `
       <select class="item-produto">${construirOpcoesProduto()}</select>
-      <input class="item-quantidade" type="number" min="1" step="1" value="1" aria-label="Quantidade">
+      <input class="item-quantidade" type="number" min="1" max="999" step="1" value="1" aria-label="Quantidade">
       <span class="item-subtotal">${formatarMoeda(0)}</span>
       <button type="button" class="item-remover" aria-label="Remover item">✕</button>
     `;
@@ -209,6 +212,10 @@ document.addEventListener("DOMContentLoaded", () => {
         );
         return;
       }
+      if (quantidade > 999) {
+        mostrarFeedback(feedback, "A quantidade de cada item não pode passar de 999.", "erro");
+        return;
+      }
       itens.push({ produto_id: Number(produtoId), quantidade });
     }
 
@@ -221,12 +228,17 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const momentoEntrega = new Date(`${dataEntrega}T${horaEntrega}`);
     const antecedenciaMinima = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    const antecedenciaMaxima = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
     if (Number.isNaN(momentoEntrega.getTime()) || momentoEntrega < antecedenciaMinima) {
       mostrarFeedback(
         feedback,
         "Escolha uma data e horário de entrega com pelo menos 24h de antecedência.",
         "erro"
       );
+      return;
+    }
+    if (momentoEntrega > antecedenciaMaxima) {
+      mostrarFeedback(feedback, "Escolha uma data de entrega em até 90 dias a partir de hoje.", "erro");
       return;
     }
 
@@ -244,6 +256,7 @@ document.addEventListener("DOMContentLoaded", () => {
       adicionarLinhaItem();
       avisoPersonalizavel.hidden = true;
       inputData.min = new Date().toISOString().slice(0, 10);
+      inputData.max = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
       mostrarFeedback(feedback, `Pedido #${pedido.id} registrado com sucesso.`, "sucesso");
     } catch (erro) {
       mostrarFeedback(feedback, erro.message, "erro");

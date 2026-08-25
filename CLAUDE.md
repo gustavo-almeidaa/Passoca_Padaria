@@ -200,7 +200,7 @@ branches e comentários de código para rastreabilidade (`feat: RF03 registro de
 | ID | Requisito |
 |---|---|
 | RF01 | Cadastrar cliente (nome, telefone, endereço opcional — adicionado em 2026-08-25) |
-| RF02 | Cadastrar produto disponível para encomenda (nome, preço, categoria, unidade) |
+| RF02 | Cadastrar produto disponível para encomenda (nome, preço, categoria, unidade); editar produto já cadastrado — adicionado em 2026-08-25 |
 | RF03 | Registrar novo pedido associando cliente + itens (produto + quantidade) |
 | RF04 | Definir data e horário de entrega/retirada do pedido |
 | RF05 | Consultar status do pedido (`recebido` → `em_producao` → `pronto` → `entregue`) |
@@ -209,16 +209,26 @@ branches e comentários de código para rastreabilidade (`feat: RF03 registro de
 
 **Backlog real além do levantamento acadêmico (avaliar com o usuário antes de
 implementar, não são RF confirmados):**
-- ~~Autenticação/login por perfil~~ — **feito em 2026-08-25 (Incremento 12)**,
-  mas só a parte de login existe: os 3 perfis (proprietária/atendente/
-  padeiro) são salvos no usuário, porém **todos têm o mesmo acesso hoje** —
-  nenhuma rota restringe por perfil ainda. Permissão diferenciada por
-  perfil continua como item de backlog em aberto, pra quando existir uma
-  ação que realmente precise disso.
+- ~~Autenticação/login por perfil~~ — **feito em 2026-08-25 (Incremento 12)**.
+  Permissão diferenciada por perfil **parcialmente feita em 2026-08-25
+  (Incremento 15)**: a aba/rotas de Usuários (`/auth/usuarios*` e
+  `/auth/trocar-senha`) são exclusivas da proprietária — decisão do
+  usuário, "pra evitar erro ou troca indesejada". Consequência aceita:
+  atendente/padeiro não têm autoatendimento de senha nenhum (nem a
+  própria). Todo o resto do sistema (clientes/produtos/pedidos) continua
+  com o mesmo acesso pra qualquer perfil autenticado.
 - Edição de pedido já criado (o levantamento original só previa criar/cancelar).
 - Histórico de pedidos por cliente.
 - ~~Trocar a própria senha (logado)~~ — **feito em 2026-08-25 (Incremento
-  14)**: usuário logado troca a senha confirmando a atual, em `/auth/trocar-senha`.
+  14)**: usuário logado troca a senha confirmando a atual, em
+  `/auth/trocar-senha` — mas só a proprietária pode usar (ver acima).
+- ~~Editar produto já cadastrado~~ — **feito em 2026-08-25 (Incremento 15)**.
+- "Excluir" usuário — **feito em 2026-08-25 (Incremento 15)**, mas
+  implementado como **desativar** (`ativo = false`), não apagar a linha:
+  mais seguro/reversível, e reaproveita o campo `ativo` que já existia.
+  Decisão tomada ao implementar (o pedido original dizia "excluir"), não
+  confirmada com o usuário antes — documentando aqui pra transparência.
+  Não existe tela de reativar ainda (só via acesso direto ao banco).
 - Recuperação de senha (esqueci minha senha, sem estar logado) e limite de
   tentativas de login (brute-force) — ainda não existem.
 
@@ -258,6 +268,13 @@ backend/serviço, nunca só validadas no frontend.
   `recebido → em_producao → pronto → entregue`. Não é permitido pular etapa
   (ex.: `recebido → entregue` direto). `cancelado` só é alcançável a partir de
   `recebido` ou `em_producao`, respeitando RN03.
+- **RN05 — Limites realistas (adicionada em 2026-08-25):** evita valor
+  absurdo por erro de digitação, validado no backend (schema Pydantic +
+  CHECK constraint no banco, quando aplicável):
+  - Preço de produto: no máximo R$ 999,99.
+  - Quantidade por item de pedido: no máximo 999.
+  - Antecedência de entrega: no máximo 90 dias a partir de agora (soma-se
+    ao mínimo de 24h da RN01).
 
 ## 8. Casos de uso (resumo)
 

@@ -10,9 +10,13 @@ from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.models.usuario import Usuario
+from app.models.usuario import PerfilUsuario, Usuario
 
 MENSAGEM_NAO_AUTENTICADO = "Sessão expirada ou inválida. Faça login novamente."
+MENSAGEM_SO_PROPRIETARIA = (
+    "Só a proprietária pode gerenciar usuários (decisão registrada em "
+    "CLAUDE.md, seção 11 — 2026-08-25, pra evitar erro ou troca indesejada)."
+)
 
 
 def get_usuario_atual(request: Request, db: Session = Depends(get_db)) -> Usuario:
@@ -32,3 +36,14 @@ def get_usuario_atual(request: Request, db: Session = Depends(get_db)) -> Usuari
         )
 
     return usuario
+
+
+def exigir_proprietaria(usuario_atual: Usuario = Depends(get_usuario_atual)) -> Usuario:
+    """Gate de perfil (Incremento 15) — primeira e única restrição por
+    perfil que existe até agora (as outras rotas continuam iguais pra
+    qualquer usuário autenticado, ver CLAUDE.md seção 11)."""
+    if usuario_atual.perfil != PerfilUsuario.PROPRIETARIA:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail=MENSAGEM_SO_PROPRIETARIA
+        )
+    return usuario_atual

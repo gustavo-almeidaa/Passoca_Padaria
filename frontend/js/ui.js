@@ -36,3 +36,42 @@ function escapeHtml(texto) {
   div.textContent = texto ?? "";
   return div.innerHTML;
 }
+
+/*
+ * Máscaras de campo — Incremento 15.
+ *
+ * Formatação só de exibição/digitação (UX); a validação de verdade
+ * continua no backend (CLAUDE.md, seção 1.4 — frontend nunca é fonte
+ * confiável). São funções puras — quem chama decide quando aplicar
+ * (normalmente num listener de "input").
+ */
+
+/** (43) 99999-9999 — telefone fixo (10 dígitos) ou celular (11), conforme
+ * a quantidade de dígitos já digitada. */
+function formatarTelefone(valor) {
+  const digitos = (valor || "").replace(/\D/g, "").slice(0, 11);
+  if (digitos.length === 0) return "";
+  if (digitos.length <= 2) return `(${digitos}`;
+  if (digitos.length <= 6) return `(${digitos.slice(0, 2)}) ${digitos.slice(2)}`;
+  if (digitos.length <= 10) {
+    return `(${digitos.slice(0, 2)}) ${digitos.slice(2, 6)}-${digitos.slice(6)}`;
+  }
+  return `(${digitos.slice(0, 2)}) ${digitos.slice(2, 7)}-${digitos.slice(7)}`;
+}
+
+/** Digita "4590" -> mostra "45,90" (padrão de caixa registradora — os
+ * últimos 2 dígitos sempre são os centavos). Limitado a 999,99 (teto do
+ * backend) pra não deixar o campo sugerir um valor que será rejeitado. */
+function formatarPrecoDigitado(valor) {
+  const digitos = (valor || "").replace(/\D/g, "").replace(/^0+(?=\d)/, "").slice(0, 5);
+  if (digitos.length === 0) return "";
+  const numero = Math.min(Number(digitos) / 100, 999.99);
+  return numero.toFixed(2).replace(".", ",");
+}
+
+/** "45,90" (formato do formatarPrecoDigitado) -> 45.90 (número, pro payload da API). */
+function paraNumeroDecimal(precoFormatado) {
+  const normalizado = (precoFormatado || "").replace(/\./g, "").replace(",", ".");
+  const numero = Number(normalizado);
+  return Number.isNaN(numero) ? 0 : numero;
+}

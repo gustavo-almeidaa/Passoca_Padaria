@@ -111,19 +111,44 @@ document.addEventListener("DOMContentLoaded", () => {
       listaUsuarios.innerHTML = '<p class="empty">Nenhum usuário cadastrado ainda.</p>';
       return;
     }
+    const idUsuarioAtual = window.usuarioAtual ? window.usuarioAtual.id : null;
     listaUsuarios.innerHTML = usuarios
       .map((u) => {
         const perfil = ROTULOS_PERFIL[u.perfil] || escapeHtml(u.perfil);
         const inativo = !u.ativo ? '<span class="selo selo--inativo">Inativo</span>' : "";
+        // Não oferece "Desativar" na própria linha nem em quem já está
+        // inativo — o backend também bloqueia a própria conta (400), isso
+        // aqui só evita oferecer um botão que ia dar erro na cara.
+        const botaoDesativar =
+          u.id !== idUsuarioAtual && u.ativo
+            ? `<button type="button" class="link-button link-button--dark" data-desativar-usuario="${u.id}">Desativar</button>`
+            : "";
         return `
           <div class="produto-item">
             <div class="produto-item__principal">
               <b>${escapeHtml(u.nome)}</b>
               <span class="produto-item__preco">${perfil}</span>
             </div>
-            <div class="produto-item__meta">${escapeHtml(u.email)}${inativo}</div>
+            <div class="produto-item__meta">${escapeHtml(u.email)}${inativo}${botaoDesativar}</div>
           </div>`;
       })
       .join("");
+
+    listaUsuarios.querySelectorAll("[data-desativar-usuario]").forEach((botao) => {
+      botao.addEventListener("click", async () => {
+        const confirmado = window.confirm(
+          "Desativar este usuário? Ele não vai mais conseguir logar. " +
+            "Não existe tela pra reativar ainda — se precisar desfazer, peça pro desenvolvedor."
+        );
+        if (!confirmado) return;
+
+        try {
+          await api.desativarUsuario(botao.dataset.desativarUsuario);
+          await carregarUsuarios();
+        } catch (erro) {
+          mostrarFeedback(feedback, erro.message, "erro");
+        }
+      });
+    });
   }
 });

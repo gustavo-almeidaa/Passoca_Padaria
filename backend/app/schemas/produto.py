@@ -28,9 +28,13 @@ class ProdutoBase(BaseModel):
 
     @field_validator("preco")
     @classmethod
-    def preco_nao_negativo(cls, v: Decimal) -> Decimal:
+    def preco_dentro_do_limite(cls, v: Decimal) -> Decimal:
+        # Teto realista (decisão do usuário, 2026-08-25) — evita erro de
+        # digitação (zero a mais) virar um preço absurdo no cardápio.
         if v < 0:
             raise ValueError("O preço não pode ser negativo.")
+        if v > Decimal("999.99"):
+            raise ValueError("O preço não pode passar de R$ 999,99.")
         return v
 
 

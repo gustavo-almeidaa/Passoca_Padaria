@@ -111,6 +111,40 @@ def test_criar_pedido_quantidade_invalida_e_rejeitada(client):
     assert resp.status_code == 422
 
 
+def test_criar_pedido_quantidade_acima_do_teto_e_rejeitada(client):
+    cliente_id = _criar_cliente(client)
+    produto_id = _criar_produto(client)
+
+    resp = client.post(
+        "/pedidos", json=_payload(cliente_id, produto_id, quantidade=1000)
+    )
+
+    assert resp.status_code == 422
+
+
+def test_criar_pedido_quantidade_no_teto_e_aceita(client):
+    cliente_id = _criar_cliente(client)
+    produto_id = _criar_produto(client)
+
+    resp = client.post(
+        "/pedidos", json=_payload(cliente_id, produto_id, quantidade=999)
+    )
+
+    assert resp.status_code == 201
+
+
+def test_criar_pedido_com_mais_de_90_dias_de_antecedencia_e_rejeitado(client):
+    cliente_id = _criar_cliente(client)
+    produto_id = _criar_produto(client)
+
+    resp = client.post(
+        "/pedidos", json=_payload(cliente_id, produto_id, delta=timedelta(days=91))
+    )
+
+    assert resp.status_code == 422
+    assert "90 dias" in resp.json()["detail"]
+
+
 def test_criar_pedido_sem_itens_e_rejeitado(client):
     cliente_id = _criar_cliente(client)
     data, hora = _entrega(timedelta(days=3))

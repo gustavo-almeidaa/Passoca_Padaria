@@ -37,7 +37,13 @@ document.addEventListener("DOMContentLoaded", () => {
   let clientesPorId = new Map();
   let produtosPorId = new Map();
 
+  // Padrão: semana a partir de hoje (decisão do usuário, 2026-08-25) — só
+  // definido uma vez ao carregar a página, pra não sobrescrever um filtro
+  // que o atendente já tenha ajustado ao voltar pra essa aba depois.
   inputDataInicio.value = new Date().toISOString().slice(0, 10);
+  inputDataFim.value = new Date(Date.now() + 6 * 24 * 60 * 60 * 1000)
+    .toISOString()
+    .slice(0, 10);
 
   // Incremento 9: a tela agora é uma seção da página única — recarrega
   // clientes/produtos de referência e refaz a busca sempre que o atendente
