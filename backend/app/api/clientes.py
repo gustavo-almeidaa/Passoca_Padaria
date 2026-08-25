@@ -4,11 +4,16 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
+from app.api.deps import get_usuario_atual
 from app.core.database import get_db
 from app.models.cliente import Cliente
 from app.schemas.cliente import ClienteCreate, ClienteRead
 
-router = APIRouter(prefix="/clientes", tags=["clientes"])
+# Incremento 12: exige login pra qualquer rota de cliente — sem restrição
+# por perfil ainda (CLAUDE.md, seção 11).
+router = APIRouter(
+    prefix="/clientes", tags=["clientes"], dependencies=[Depends(get_usuario_atual)]
+)
 
 
 @router.post("", response_model=ClienteRead, status_code=status.HTTP_201_CREATED)

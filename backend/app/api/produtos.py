@@ -6,11 +6,16 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
+from app.api.deps import get_usuario_atual
 from app.core.database import get_db
 from app.models.produto import Produto
 from app.schemas.produto import ProdutoCreate, ProdutoRead
 
-router = APIRouter(prefix="/produtos", tags=["produtos"])
+# Incremento 12: exige login pra qualquer rota de produto — sem restrição
+# por perfil ainda (CLAUDE.md, seção 11).
+router = APIRouter(
+    prefix="/produtos", tags=["produtos"], dependencies=[Depends(get_usuario_atual)]
+)
 
 
 @router.post("", response_model=ProdutoRead, status_code=status.HTTP_201_CREATED)

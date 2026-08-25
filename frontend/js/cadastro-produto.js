@@ -24,10 +24,9 @@ document.addEventListener("DOMContentLoaded", () => {
     cento: "Cento",
   };
 
-  carregarProdutos();
-
   // Incremento 9: a tela agora é uma seção da página única — recarrega a
-  // lista sempre que o atendente volta pra essa aba.
+  // lista sempre que o atendente volta pra essa aba. Incremento 12: sem
+  // carga eager aqui, ver nota equivalente em cadastro-cliente.js.
   document.addEventListener("tela:ativada", (evento) => {
     if (evento.detail.tela === "produtos") carregarProdutos();
   });

@@ -45,6 +45,10 @@ async function apiFetch(caminho, opcoes = {}) {
   try {
     resposta = await fetch(caminho, {
       headers: { "Content-Type": "application/json" },
+      // Incremento 12: sessão de login é cookie — precisa ir em toda
+      // chamada, inclusive same-origin (é o default na maioria dos
+      // navegadores, mas deixamos explícito).
+      credentials: "same-origin",
       ...opcoes,
     });
   } catch (_erroDeRede) {
@@ -64,6 +68,13 @@ async function apiFetch(caminho, opcoes = {}) {
   }
 
   if (!resposta.ok) {
+    if (resposta.status === 401) {
+      // Sessão ausente/expirada — avisa a tela de login pra assumir,
+      // independente de qual chamada disparou isso (CLAUDE.md, seção 1.6:
+      // feedback imediato de cada ação, sem deixar o atendente preso numa
+      // tela travada esperando uma requisição que nunca vai funcionar).
+      document.dispatchEvent(new CustomEvent("auth:necessaria"));
+    }
     throw new ApiError(extrairMensagemErro(corpo), resposta.status);
   }
 
@@ -93,4 +104,11 @@ const api = {
   confirmarSinal: (id) => apiFetch(`/pedidos/${id}/confirmar-sinal`, { method: "POST" }),
   avancarPedido: (id) => apiFetch(`/pedidos/${id}/avancar`, { method: "POST" }),
   cancelarPedido: (id) => apiFetch(`/pedidos/${id}/cancelar`, { method: "POST" }),
+  login: (email, senha) =>
+    apiFetch("/auth/login", { method: "POST", body: JSON.stringify({ email, senha }) }),
+  logout: () => apiFetch("/auth/logout", { method: "POST" }),
+  me: () => apiFetch("/auth/me"),
+  listarUsuarios: () => apiFetch("/auth/usuarios"),
+  criarUsuario: (dados) =>
+    apiFetch("/auth/usuarios", { method: "POST", body: JSON.stringify(dados) }),
 };

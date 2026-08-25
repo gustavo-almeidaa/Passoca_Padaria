@@ -34,16 +34,16 @@ entre abas), **Incremento 10 concluído** (RF01 ganha campo de endereço
 opcional — texto livre — no cadastro de cliente, com migration) e
 **Incremento 11 concluído** (banco de dados migrado de SQLite para
 PostgreSQL gerenciado via Neon — resolve a decisão em aberto da seção 11
-do `CLAUDE.md` e atende RNF03, que pedia backup). RF01-RF07 do
-levantamento original estão completos tanto no backend quanto no
-frontend.
+do `CLAUDE.md` e atende RNF03, que pedia backup) e **Incremento 12
+concluído** (autenticação por sessão — login obrigatório em todas as
+rotas, 3 perfis salvos no usuário mas ainda com o mesmo acesso entre si,
+sem permissão diferenciada). RF01-RF07 do levantamento original estão
+completos tanto no backend quanto no frontend.
 
-Autenticação/login por perfil e onde o sistema vai rodar em produção
-(deploy) seguem como as próximas decisões em aberto (ver `CLAUDE.md`,
-seção 11). O sistema roda hoje sem autenticação, para uso na rede interna
-da padaria — e passou a depender de internet, já que o banco agora é
-gerenciado na nuvem (decisão registrada: funcionar offline não é
-requisito do MVP).
+O sistema passou a depender de internet, já que o banco agora é gerenciado
+na nuvem (decisão registrada: funcionar offline não é requisito do MVP).
+Deploy em produção (Render, já escolhido) é a próxima decisão em aberto —
+ver `CLAUDE.md`, seção 11.
 
 ## Estrutura do repositório
 
@@ -51,12 +51,13 @@ requisito do MVP).
 Passoca_Padaria/
 ├── backend/
 │   ├── app/
-│   │   ├── models/       # modelos SQLAlchemy (Cliente, Produto, Pedido, ItemPedido)
-│   │   ├── schemas/      # schemas Pydantic — Cliente, Produto e Pedido
+│   │   ├── models/       # modelos SQLAlchemy (Cliente, Produto, Pedido, ItemPedido, Usuario)
+│   │   ├── schemas/      # schemas Pydantic — Cliente, Produto, Pedido e Usuario
 │   │   ├── services/     # regras de negócio — RN01-RN04 aplicadas no backend
-│   │   ├── api/          # rotas FastAPI — /clientes, /produtos e /pedidos
+│   │   ├── api/          # rotas FastAPI — /clientes, /produtos, /pedidos, /auth
+│   │   │                 # + deps.py (dependência de autenticação)
 │   │   ├── main.py       # ponto de entrada da API (app FastAPI)
-│   │   └── core/         # config (settings) e conexão com banco
+│   │   └── core/         # config (settings), conexão com banco e security.py (hash de senha)
 │   ├── migrations/       # Alembic — histórico de mudanças de schema
 │   ├── tests/            # pytest
 │   ├── .env.example      # modelo de variáveis de ambiente
@@ -65,12 +66,14 @@ Passoca_Padaria/
 │   ├── requirements.txt
 │   └── requirements-dev.txt
 ├── frontend/
-│   ├── index.html         # página única — 4 seções (Clientes, Produtos,
-│   │                       # Novo Pedido, Pedidos) trocadas via JS, sem reload
+│   ├── index.html         # página única — tela de login + 5 seções (Clientes,
+│   │                       # Produtos, Novo Pedido, Pedidos, Usuários) trocadas
+│   │                       # via JS, sem reload
 │   ├── css/style.css      # estilo compartilhado entre as seções
 │   └── js/                # api.js (cliente HTTP), ui.js (feedback visual),
-│                           # app.js (controlador de abas), cadastro-cliente.js,
-│                           # cadastro-produto.js, novo-pedido.js, lista-pedidos.js
+│                           # app.js (controlador de abas), auth.js (login/logout),
+│                           # cadastro-cliente.js, cadastro-produto.js,
+│                           # novo-pedido.js, lista-pedidos.js, usuarios.js
 ├── docs/referencia-prototipo/  # protótipo HTML original, só como referência de UX
 └── CLAUDE.md
 ```
@@ -97,6 +100,25 @@ desenvolvedor faz a sua:
 5. `.env` nunca é commitado (já está no `.gitignore`) — a connection string
    tem senha, não compartilhe fora do seu ambiente local.
 
+## Configurando a autenticação (Incremento 12)
+
+O sistema exige login em todas as rotas de negócio. Além de `DATABASE_URL`,
+o `backend/.env` precisa de:
+
+| Variável | Para quê |
+|---|---|
+| `SESSION_SECRET_KEY` | Assina o cookie de sessão. Gere uma própria — nunca reaproveite a de outro ambiente: `python -c "import secrets; print(secrets.token_hex(32))"` |
+| `ADMIN_NOME`, `ADMIN_EMAIL`, `ADMIN_SENHA` | Criam a conta da proprietária automaticamente no primeiro boot, **só se o banco ainda não tiver nenhum usuário**. Troque a senha depois de logar pela primeira vez — não existe fluxo de troca de senha ainda, então por enquanto isso é feito direto no banco. |
+
+Sem `ADMIN_EMAIL`/`ADMIN_SENHA` configurados, o servidor sobe normalmente,
+mas ninguém consegue logar (fica um aviso no log). Usuários adicionais
+(atendente, padeiro) são criados pela aba "Usuários" do próprio sistema,
+já logado.
+
+`ENVIRONMENT=production` (setar no Render, não localmente) ativa validações
+extras — o servidor recusa subir se `SESSION_SECRET_KEY` ainda for o valor
+de desenvolvimento.
+
 ## Rodando localmente
 
 ```bash
@@ -106,7 +128,8 @@ source .venv/bin/activate          # Windows: .venv\Scripts\activate
 
 pip install -r requirements-dev.txt
 
-# configure o backend/.env com a connection string do Neon (passo acima)
+# configure o backend/.env: DATABASE_URL (Neon, passo acima) +
+# SESSION_SECRET_KEY + ADMIN_EMAIL/ADMIN_SENHA (passo acima)
 
 alembic upgrade head               # cria o schema no banco do Neon
 
@@ -116,19 +139,28 @@ uvicorn app.main:app --reload      # sobe a API + frontend em http://127.0.0.1:8
 ```
 
 Isso cria o schema completo (`clientes`, `produtos`, `pedidos`,
-`itens_pedido`) no banco Postgres do Neon e roda os 82 testes automatizados
-(schema + API + service de pedidos — cada teste usa um SQLite em memória
-isolado, não toca no Neon). Com o servidor no ar: o sistema fica em
-`http://127.0.0.1:8000/`, com as 4 telas (Clientes, Produtos, Novo Pedido,
-Pedidos) acessíveis pela navegação no topo — trocar de aba não recarrega a
-página — e a documentação interativa (Swagger) em
-`http://127.0.0.1:8000/docs`.
+`itens_pedido`, `usuarios`) no banco Postgres do Neon e roda os 102 testes
+automatizados (schema + API + service de pedidos + autenticação — cada
+teste usa um SQLite em memória isolado, não toca no Neon). No primeiro
+boot, se `ADMIN_EMAIL`/`ADMIN_SENHA` estiverem configurados e o banco não
+tiver nenhum usuário, a conta da proprietária é criada automaticamente.
+Com o servidor no ar: o sistema fica em `http://127.0.0.1:8000/` — pede
+login antes de mostrar qualquer tela — e a documentação interativa
+(Swagger) em `http://127.0.0.1:8000/docs`.
 
 ## Endpoints disponíveis
 
+Todas as rotas abaixo, exceto `/health` e as de `/auth`, exigem sessão de
+login (cookie) — retornam `401` sem ela.
+
 | Método | Rota | Descrição |
 |---|---|---|
-| `GET` | `/health` | Verificação de saúde da API |
+| `GET` | `/health` | Verificação de saúde da API (não exige login) |
+| `POST` | `/auth/login` | Login (e-mail + senha) — cria a sessão |
+| `POST` | `/auth/logout` | Encerra a sessão |
+| `GET` | `/auth/me` | Dados do usuário logado (frontend usa pra checar sessão) |
+| `GET` | `/auth/usuarios` | Lista usuários cadastrados |
+| `POST` | `/auth/usuarios` | Cria outro usuário (exige estar logado) |
 | `POST` | `/clientes` | Cadastrar cliente (RF01) |
 | `GET` | `/clientes` | Listar clientes |
 | `GET` | `/clientes/{id}` | Consultar um cliente |

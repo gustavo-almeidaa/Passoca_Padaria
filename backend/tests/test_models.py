@@ -18,10 +18,12 @@ from app.models import (
     CategoriaProduto,
     Cliente,
     ItemPedido,
+    PerfilUsuario,
     Pedido,
     Produto,
     StatusPedido,
     UnidadeProduto,
+    Usuario,
 )
 
 
@@ -81,6 +83,45 @@ class TestCliente:
         db_session.refresh(cliente)
 
         assert cliente.endereco == "Rua das Flores, 123"
+
+
+class TestUsuario:
+    def test_cria_usuario_com_campos_obrigatorios(self, db_session):
+        usuario = Usuario(
+            nome="Proprietária",
+            email="dona@passoca.com",
+            senha_hash="hash-fake-so-pro-teste",
+            perfil=PerfilUsuario.PROPRIETARIA,
+        )
+        db_session.add(usuario)
+        db_session.commit()
+        db_session.refresh(usuario)
+
+        assert usuario.id is not None
+        assert usuario.ativo is True
+        assert usuario.criado_em is not None
+
+    def test_email_e_unico(self, db_session):
+        db_session.add(
+            Usuario(
+                nome="Proprietária",
+                email="dona@passoca.com",
+                senha_hash="hash-fake",
+                perfil=PerfilUsuario.PROPRIETARIA,
+            )
+        )
+        db_session.commit()
+
+        db_session.add(
+            Usuario(
+                nome="Outra Pessoa",
+                email="dona@passoca.com",
+                senha_hash="hash-fake-2",
+                perfil=PerfilUsuario.ATENDENTE,
+            )
+        )
+        with pytest.raises(IntegrityError):
+            db_session.commit()
 
 
 class TestProduto:

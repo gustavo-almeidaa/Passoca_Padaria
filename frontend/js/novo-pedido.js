@@ -39,12 +39,11 @@ document.addEventListener("DOMContentLoaded", () => {
   // depende do horário escolhido) é feito no submit.
   inputData.min = new Date().toISOString().slice(0, 10);
 
-  inicializar();
-
   // Incremento 9: a tela agora é uma seção da página única — ao voltar pra
   // essa aba, recarrega clientes/produtos (podem ter sido cadastrados nas
   // outras abas nesse meio tempo) sem perder o que o atendente já tinha
-  // preenchido no formulário.
+  // preenchido no formulário. Incremento 12: sem carga eager aqui, ver
+  // nota equivalente em cadastro-cliente.js.
   document.addEventListener("tela:ativada", (evento) => {
     if (evento.detail.tela === "pedido") inicializar();
   });

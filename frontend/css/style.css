@@ -31,6 +31,60 @@ body {
   min-height: 100vh;
 }
 
+.login-wrap {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.login-card {
+  background: var(--paper);
+  border-radius: 10px;
+  padding: 32px 28px;
+  box-shadow: 0 6px 18px rgba(46, 33, 23, 0.12);
+  border: 1px solid rgba(139, 74, 43, 0.15);
+  width: 100%;
+  max-width: 360px;
+  text-align: center;
+}
+.login-card h1 {
+  font-family: 'Kalam', cursive;
+  color: var(--crust);
+  font-size: 1.8rem;
+  margin: 0 0 6px;
+}
+.login-card .sub {
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+  margin: 0 0 18px;
+}
+.login-card form { text-align: left; }
+.login-card label:first-of-type { margin-top: 0; }
+
+.topbar {
+  background: var(--wood);
+  color: var(--paper);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 14px;
+  padding: 8px 20px;
+  font-size: 0.85rem;
+}
+.link-button {
+  background: none;
+  border: none;
+  color: var(--gold);
+  font-family: 'Karla', sans-serif;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+}
+.link-button:hover { color: var(--paper); }
+
 header {
   background: linear-gradient(180deg, var(--wood-light), var(--wood));
   padding: 24px 20px 0;
@@ -392,6 +446,7 @@ button.danger:disabled {
   padding: 2px 8px;
   border-radius: 999px;
 }
+.selo--inativo { background: var(--border); color: var(--ink-soft); }
 
 footer {
   text-align: center;

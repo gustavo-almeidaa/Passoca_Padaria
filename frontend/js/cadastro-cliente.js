@@ -8,11 +8,11 @@ document.addEventListener("DOMContentLoaded", () => {
   const inputEndereco = document.getElementById("c-endereco");
   const listaClientes = document.getElementById("lista-clientes");
 
-  carregarClientes();
-
   // Incremento 9: a tela agora é uma seção da página única — recarrega a
   // lista sempre que o atendente volta pra essa aba, pra pegar clientes
-  // cadastrados enquanto ele estava em outra tela.
+  // cadastrados enquanto ele estava em outra tela. Incremento 12: não tem
+  // mais carga eager aqui — a primeira carga só acontece quando auth.js
+  // confirma a sessão e ativa esta aba (login obrigatório agora).
   document.addEventListener("tela:ativada", (evento) => {
     if (evento.detail.tela === "clientes") carregarClientes();
   });

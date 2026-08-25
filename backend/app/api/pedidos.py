@@ -13,12 +13,17 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
+from app.api.deps import get_usuario_atual
 from app.core.database import get_db
 from app.models.pedido import Pedido
 from app.schemas.pedido import PedidoCreate, PedidoRead
 from app.services import pedidos as pedidos_service
 
-router = APIRouter(prefix="/pedidos", tags=["pedidos"])
+# Incremento 12: exige login pra qualquer rota de pedido — sem restrição
+# por perfil ainda (CLAUDE.md, seção 11).
+router = APIRouter(
+    prefix="/pedidos", tags=["pedidos"], dependencies=[Depends(get_usuario_atual)]
+)
 
 
 @router.post("", response_model=PedidoRead, status_code=status.HTTP_201_CREATED)

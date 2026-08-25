@@ -9,6 +9,7 @@ from app.models.cliente import Cliente
 from app.models.item_pedido import ItemPedido
 from app.models.pedido import TRANSICOES_VALIDAS, Pedido, StatusPedido
 from app.models.produto import CategoriaProduto, Produto, UnidadeProduto
+from app.models.usuario import PerfilUsuario, Usuario
 
 __all__ = [
     "Cliente",
@@ -19,4 +20,6 @@ __all__ = [
     "StatusPedido",
     "TRANSICOES_VALIDAS",
     "ItemPedido",
+    "Usuario",
+    "PerfilUsuario",
 ]

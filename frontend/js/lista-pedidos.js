@@ -39,11 +39,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
   inputDataInicio.value = new Date().toISOString().slice(0, 10);
 
-  inicializar();
-
   // Incremento 9: a tela agora é uma seção da página única — recarrega
   // clientes/produtos de referência e refaz a busca sempre que o atendente
   // volta pra essa aba (pode ter cadastrado cliente/produto nas outras).
+  // Incremento 12: sem carga eager aqui, ver nota equivalente em
+  // cadastro-cliente.js.
   document.addEventListener("tela:ativada", (evento) => {
     if (evento.detail.tela === "pedidos") inicializar();
   });

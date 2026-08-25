@@ -209,9 +209,16 @@ branches e comentários de código para rastreabilidade (`feat: RF03 registro de
 
 **Backlog real além do levantamento acadêmico (avaliar com o usuário antes de
 implementar, não são RF confirmados):**
-- Autenticação/login por perfil (proprietária / atendente / padeiro).
+- ~~Autenticação/login por perfil~~ — **feito em 2026-08-25 (Incremento 12)**,
+  mas só a parte de login existe: os 3 perfis (proprietária/atendente/
+  padeiro) são salvos no usuário, porém **todos têm o mesmo acesso hoje** —
+  nenhuma rota restringe por perfil ainda. Permissão diferenciada por
+  perfil continua como item de backlog em aberto, pra quando existir uma
+  ação que realmente precise disso.
 - Edição de pedido já criado (o levantamento original só previa criar/cancelar).
 - Histórico de pedidos por cliente.
+- Recuperação de senha e limite de tentativas de login (brute-force) — não
+  existem ainda (ver Incremento 12).
 
 ## 6. Requisitos não funcionais (RNF)
 
@@ -333,9 +340,16 @@ Não escolha estes itens sozinho sem perguntar primeiro, mesmo que pareça
       "oficial" do projeto.
 - [x] Stack de frontend — **HTML/JS simples, sem framework**, decidido
       no Incremento 5.
-- [ ] Autenticação: existe login? Quantos perfis de usuário?
-- [ ] Onde vai rodar: local na padaria, VPS, serviço gerenciado (Railway,
-      Render, etc.)? — próxima decisão em aberto (deploy).
+- [x] Autenticação — **sim, login por sessão (cookie assinado)**, decidido
+      e implementado em 2026-08-25 (Incremento 12). 3 perfis existem
+      (proprietária/atendente/padeiro), mas **sem permissão diferenciada
+      ainda** — todos autenticados têm o mesmo acesso; isso ficou registrado
+      como item de backlog em aberto (seção 5). Primeiro usuário (a
+      proprietária) é criado automaticamente no primeiro boot a partir de
+      `ADMIN_EMAIL`/`ADMIN_SENHA` no ambiente — ver `backend/app/main.py`.
+- [ ] Onde vai rodar: decidido o serviço (**Render**, PaaS gerenciado —
+      2026-08-25), mas o deploy em si ainda não foi configurado/executado.
+      Próximo passo.
 - [x] Necessidade de funcionar offline — **não é requisito do MVP**,
       decidido em 2026-08-25 junto com a escolha do banco gerenciado
       (que já pressupõe internet disponível).
