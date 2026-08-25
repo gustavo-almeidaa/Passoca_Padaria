@@ -17,6 +17,13 @@ services:
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
     plan: free
     envVars:
+      # Sem isso, o Render usa a versão mais recente do Python (3.14 no
+      # momento), tempo demais nova pra várias libs do projeto ainda
+      # publicarem wheel pré-compilado (greenlet, por exemplo, falhava
+      # tentando compilar do zero contra a API interna do CPython 3.14).
+      # 3.12 é bem estabelecida e tem wheel pra tudo que este projeto usa.
+      - key: PYTHON_VERSION
+        value: 3.12.7
       - key: DATABASE_URL
         sync: false
       - key: SESSION_SECRET_KEY
