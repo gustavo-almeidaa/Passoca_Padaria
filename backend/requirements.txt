@@ -11,8 +11,11 @@ pydantic-settings==2.6.1
 python-dotenv==1.0.1
 # Driver PostgreSQL (Neon — CLAUDE.md, seção 11). psycopg3 com wheel
 # pré-compilado ("binary") evita o mesmo problema de build no Windows
-# citado no pin do greenlet acima.
-psycopg[binary]==3.2.3
+# citado no pin do greenlet acima. 3.2.3 saiu de circulação pro Python
+# usado no Render (só tinha wheel a partir da 3.2.10) — bump pra uma
+# versão com wheel disponível tanto no Windows (dev local) quanto no
+# Linux do Render.
+psycopg[binary]==3.2.13
 
 # Autenticação (Incremento 12).
 bcrypt==4.2.1
