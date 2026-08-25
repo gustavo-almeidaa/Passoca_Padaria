@@ -84,4 +84,13 @@ const api = {
     apiFetch("/produtos", { method: "POST", body: JSON.stringify(dados) }),
   criarPedido: (dados) =>
     apiFetch("/pedidos", { method: "POST", body: JSON.stringify(dados) }),
+  listarPedidos: (opcoes = {}) => {
+    const params = new URLSearchParams();
+    if (opcoes.data_inicio) params.set("data_inicio", opcoes.data_inicio);
+    if (opcoes.data_fim) params.set("data_fim", opcoes.data_fim);
+    return apiFetch(`/pedidos?${params.toString()}`);
+  },
+  confirmarSinal: (id) => apiFetch(`/pedidos/${id}/confirmar-sinal`, { method: "POST" }),
+  avancarPedido: (id) => apiFetch(`/pedidos/${id}/avancar`, { method: "POST" }),
+  cancelarPedido: (id) => apiFetch(`/pedidos/${id}/cancelar`, { method: "POST" }),
 };

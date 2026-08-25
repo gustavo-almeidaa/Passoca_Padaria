@@ -24,11 +24,12 @@ RN01 aplicada no backend), **Incremento 4 concluído** (ciclo de vida do
 pedido — RF06 cancelar, RF07 listar por período, com RN02, RN03 e RN04
 aplicadas no backend), **Incremento 5 concluído** (frontend — infraestrutura
 mínima e tela de cadastro de cliente, RF01), **Incremento 6 concluído**
-(frontend — tela de cadastro de produto, RF02) e **Incremento 7 concluído**
+(frontend — tela de cadastro de produto, RF02), **Incremento 7 concluído**
 (frontend — tela de novo pedido, RF03/RF04, com RN01 replicada no
-frontend). RF01-RF07 do levantamento original estão completos no backend;
-o frontend cobre RF01 até RF04 até aqui — a tela de lista de pedidos com
-o ciclo de vida completo (RF05-RF07, RN02-RN04) fica para o Incremento 8.
+frontend) e **Incremento 8 concluído** (frontend — tela de Pedidos, RF05 e
+RF07, com confirmar sinal/RN02, avançar status/RN04 e cancelar/RF06+RN03).
+RF01-RF07 do levantamento original estão completos tanto no backend quanto
+no frontend.
 
 Autenticação/login por perfil está deliberadamente fora do MVP (ver backlog
 no `CLAUDE.md`, seção 5 e 13). O sistema roda hoje sem autenticação, para
@@ -61,10 +62,11 @@ Passoca_Padaria/
 │   ├── index.html         # tela de cadastro de cliente (RF01)
 │   ├── produtos.html      # tela de cadastro de produto (RF02)
 │   ├── pedido.html        # tela de novo pedido (RF03/RF04)
+│   ├── pedidos.html       # tela de lista de pedidos (RF05/RF07 + ações)
 │   ├── css/style.css      # estilo compartilhado entre telas
 │   └── js/                # api.js (cliente HTTP), ui.js (feedback visual),
 │                           # cadastro-cliente.js, cadastro-produto.js,
-│                           # novo-pedido.js
+│                           # novo-pedido.js, lista-pedidos.js
 ├── docs/referencia-prototipo/  # protótipo HTML original, só como referência de UX
 └── CLAUDE.md
 ```
@@ -94,8 +96,10 @@ uvicorn app.main:app --reload      # sobe a API + frontend em http://127.0.0.1:8
 Isso cria o schema completo (`clientes`, `produtos`, `pedidos`,
 `itens_pedido`) no arquivo `backend/app.db` (ignorado pelo git) e roda os
 79 testes automatizados (schema + API + service de pedidos). Com o servidor
-no ar: a tela de cadastro de cliente fica em `http://127.0.0.1:8000/` e a
-documentação interativa (Swagger) em `http://127.0.0.1:8000/docs`.
+no ar: a tela de cadastro de cliente fica em `http://127.0.0.1:8000/`, com
+as demais telas (Produtos, Novo Pedido, Pedidos) acessíveis pela navegação
+no topo, e a documentação interativa (Swagger) em
+`http://127.0.0.1:8000/docs`.
 
 ## Endpoints disponíveis
 

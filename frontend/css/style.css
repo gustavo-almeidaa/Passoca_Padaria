@@ -267,6 +267,72 @@ button.secondary:hover { background: rgba(139, 74, 43, 0.08); }
 }
 .total b { color: var(--crust); }
 
+button.action--small {
+  font-size: 0.85rem;
+  padding: 7px 14px;
+  margin-top: 0;
+  box-shadow: 0 2px 0 #6a3720;
+}
+button.action--small:disabled { background: #c9c0af; box-shadow: none; }
+
+button.danger {
+  font-family: 'Karla', sans-serif;
+  font-size: 0.85rem;
+  font-weight: 600;
+  background: #fff;
+  color: var(--red);
+  border: 1.5px solid var(--red);
+  padding: 7px 14px;
+  border-radius: 7px;
+  cursor: pointer;
+}
+button.danger:hover { background: #F6E3E0; }
+button.danger:disabled {
+  color: var(--ink-soft);
+  border-color: var(--border);
+  cursor: not-allowed;
+  background: none;
+}
+
+.badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .03em;
+  padding: 4px 12px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.badge--recebido { background: #E4ECF6; color: #3A5A8C; }
+.badge--em_producao { background: #FBF0DA; color: #8a5f10; }
+.badge--pronto { background: #E4EEDD; color: var(--green); }
+.badge--entregue { background: #E2E2E2; color: #555; }
+.badge--cancelado { background: #F6E3E0; color: var(--red); }
+
+.ticket-list { display: flex; flex-direction: column; gap: 16px; }
+.ticket {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px 18px;
+}
+.ticket__topo {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  font-size: 1rem;
+}
+.ticket__topo b { color: var(--wood); }
+.ticket__entrega { color: var(--ink-soft); font-size: 0.85rem; margin-top: 4px; }
+.ticket__itens { margin: 10px 0; padding-left: 20px; font-size: 0.9rem; color: var(--ink); }
+.ticket__itens li { margin-bottom: 2px; }
+.ticket__total { font-size: 0.95rem; margin-top: 4px; }
+.ticket__total b { color: var(--crust); }
+.ticket__sinal { font-size: 0.85rem; margin-top: 6px; }
+.ticket__acoes { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.ticket__feedback { margin-top: 10px; }
+
 .empty {
   text-align: center;
   color: var(--ink-soft);
