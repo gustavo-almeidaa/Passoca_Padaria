@@ -26,10 +26,12 @@ aplicadas no backend), **Incremento 5 concluído** (frontend — infraestrutura
 mínima e tela de cadastro de cliente, RF01), **Incremento 6 concluído**
 (frontend — tela de cadastro de produto, RF02), **Incremento 7 concluído**
 (frontend — tela de novo pedido, RF03/RF04, com RN01 replicada no
-frontend) e **Incremento 8 concluído** (frontend — tela de Pedidos, RF05 e
-RF07, com confirmar sinal/RN02, avançar status/RN04 e cancelar/RF06+RN03).
-RF01-RF07 do levantamento original estão completos tanto no backend quanto
-no frontend.
+frontend), **Incremento 8 concluído** (frontend — tela de Pedidos, RF05 e
+RF07, com confirmar sinal/RN02, avançar status/RN04 e cancelar/RF06+RN03)
+e **Incremento 9 concluído** (frontend — as 4 telas unificadas em uma
+única página, trocando de seção via JS sem recarregar, com sincronização
+entre abas). RF01-RF07 do levantamento original estão completos tanto no
+backend quanto no frontend.
 
 Autenticação/login por perfil está deliberadamente fora do MVP (ver backlog
 no `CLAUDE.md`, seção 5 e 13). O sistema roda hoje sem autenticação, para
@@ -59,14 +61,12 @@ Passoca_Padaria/
 │   ├── requirements.txt
 │   └── requirements-dev.txt
 ├── frontend/
-│   ├── index.html         # tela de cadastro de cliente (RF01)
-│   ├── produtos.html      # tela de cadastro de produto (RF02)
-│   ├── pedido.html        # tela de novo pedido (RF03/RF04)
-│   ├── pedidos.html       # tela de lista de pedidos (RF05/RF07 + ações)
-│   ├── css/style.css      # estilo compartilhado entre telas
+│   ├── index.html         # página única — 4 seções (Clientes, Produtos,
+│   │                       # Novo Pedido, Pedidos) trocadas via JS, sem reload
+│   ├── css/style.css      # estilo compartilhado entre as seções
 │   └── js/                # api.js (cliente HTTP), ui.js (feedback visual),
-│                           # cadastro-cliente.js, cadastro-produto.js,
-│                           # novo-pedido.js, lista-pedidos.js
+│                           # app.js (controlador de abas), cadastro-cliente.js,
+│                           # cadastro-produto.js, novo-pedido.js, lista-pedidos.js
 ├── docs/referencia-prototipo/  # protótipo HTML original, só como referência de UX
 └── CLAUDE.md
 ```
@@ -96,10 +96,10 @@ uvicorn app.main:app --reload      # sobe a API + frontend em http://127.0.0.1:8
 Isso cria o schema completo (`clientes`, `produtos`, `pedidos`,
 `itens_pedido`) no arquivo `backend/app.db` (ignorado pelo git) e roda os
 79 testes automatizados (schema + API + service de pedidos). Com o servidor
-no ar: a tela de cadastro de cliente fica em `http://127.0.0.1:8000/`, com
-as demais telas (Produtos, Novo Pedido, Pedidos) acessíveis pela navegação
-no topo, e a documentação interativa (Swagger) em
-`http://127.0.0.1:8000/docs`.
+no ar: o sistema fica em `http://127.0.0.1:8000/`, com as 4 telas
+(Clientes, Produtos, Novo Pedido, Pedidos) acessíveis pela navegação no
+topo — trocar de aba não recarrega a página — e a documentação interativa
+(Swagger) em `http://127.0.0.1:8000/docs`.
 
 ## Endpoints disponíveis
 

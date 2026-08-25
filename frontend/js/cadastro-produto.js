@@ -26,6 +26,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
   carregarProdutos();
 
+  // Incremento 9: a tela agora é uma seção da página única — recarrega a
+  // lista sempre que o atendente volta pra essa aba.
+  document.addEventListener("tela:ativada", (evento) => {
+    if (evento.detail.tela === "produtos") carregarProdutos();
+  });
+
   form.addEventListener("submit", async (evento) => {
     evento.preventDefault();
     limparFeedback(feedback);

@@ -7,7 +7,7 @@
  *
  * A lista "últimos pedidos registrados" no fim da tela é só uma conveniência
  * de sessão (array em memória, se perde ao recarregar a página) — não é a
- * listagem por período do RF07, que é tela própria do Incremento 8.
+ * listagem por período do RF07, que é a aba "Pedidos" (lista-pedidos.js).
  */
 document.addEventListener("DOMContentLoaded", () => {
   const form = document.getElementById("form-pedido");
@@ -41,6 +41,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
   inicializar();
 
+  // Incremento 9: a tela agora é uma seção da página única — ao voltar pra
+  // essa aba, recarrega clientes/produtos (podem ter sido cadastrados nas
+  // outras abas nesse meio tempo) sem perder o que o atendente já tinha
+  // preenchido no formulário.
+  document.addEventListener("tela:ativada", (evento) => {
+    if (evento.detail.tela === "pedido") inicializar();
+  });
+
   async function inicializar() {
     definirCarregando(botaoSalvar, true, "Carregando...");
     try {
@@ -48,9 +56,19 @@ document.addEventListener("DOMContentLoaded", () => {
         api.listarClientes(),
         api.listarProdutos({ ativo: true }),
       ]);
+
+      const clienteSelecionadoAntes = selectCliente.value;
       clientesDisponiveis = clientes;
-      produtosDisponiveis = produtos;
       popularSelectCliente();
+      if (
+        clienteSelecionadoAntes &&
+        clientesDisponiveis.some((c) => String(c.id) === clienteSelecionadoAntes)
+      ) {
+        selectCliente.value = clienteSelecionadoAntes;
+      }
+
+      produtosDisponiveis = produtos;
+      atualizarOpcoesProdutoNasLinhas();
 
       if (clientesDisponiveis.length === 0) {
         mostrarFeedback(
@@ -64,8 +82,14 @@ document.addEventListener("DOMContentLoaded", () => {
           "Nenhum produto cadastrado ainda. Cadastre um produto antes de criar um pedido.",
           "aviso"
         );
+      } else {
+        limparFeedback(feedback);
       }
-      adicionarLinhaItem();
+
+      // Só adiciona a linha inicial se a tela ainda não tinha nenhuma —
+      // recarregar dados (ex.: voltando de outra aba) não deve duplicar
+      // itens que o atendente já estava montando.
+      if (itensContainer.children.length === 0) adicionarLinhaItem();
     } catch (erro) {
       mostrarFeedback(feedback, erro.message, "erro");
     } finally {
@@ -88,21 +112,39 @@ document.addEventListener("DOMContentLoaded", () => {
         .join("");
   }
 
+  function construirOpcoesProduto() {
+    return (
+      '<option value="" selected disabled>Selecione o produto</option>' +
+      produtosDisponiveis
+        .map(
+          (p) =>
+            `<option value="${p.id}" data-preco="${p.preco}" data-personalizavel="${p.personalizavel}">${escapeHtml(p.nome)} — ${formatarMoeda(p.preco)}/${ROTULOS_UNIDADE[p.unidade] || escapeHtml(p.unidade)}</option>`
+        )
+        .join("")
+    );
+  }
+
+  // Atualiza as opções de produto das linhas já existentes (ex.: um produto
+  // novo cadastrado em outra aba) sem perder o item já selecionado em cada
+  // linha, quando ele continuar disponível.
+  function atualizarOpcoesProdutoNasLinhas() {
+    itensContainer.querySelectorAll(".item-produto").forEach((select) => {
+      const valorAtual = select.value;
+      select.innerHTML = construirOpcoesProduto();
+      if (valorAtual && produtosDisponiveis.some((p) => String(p.id) === valorAtual)) {
+        select.value = valorAtual;
+      }
+    });
+    atualizarTotais();
+  }
+
   function adicionarLinhaItem() {
     if (!podeMontarPedido()) return;
 
     const linha = document.createElement("div");
     linha.className = "item-pedido-row";
     linha.innerHTML = `
-      <select class="item-produto">
-        <option value="" selected disabled>Selecione o produto</option>
-        ${produtosDisponiveis
-          .map(
-            (p) =>
-              `<option value="${p.id}" data-preco="${p.preco}" data-personalizavel="${p.personalizavel}">${escapeHtml(p.nome)} — ${formatarMoeda(p.preco)}/${ROTULOS_UNIDADE[p.unidade] || escapeHtml(p.unidade)}</option>`
-          )
-          .join("")}
-      </select>
+      <select class="item-produto">${construirOpcoesProduto()}</select>
       <input class="item-quantidade" type="number" min="1" step="1" value="1" aria-label="Quantidade">
       <span class="item-subtotal">${formatarMoeda(0)}</span>
       <button type="button" class="item-remover" aria-label="Remover item">✕</button>

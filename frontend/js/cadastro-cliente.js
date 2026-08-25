@@ -9,6 +9,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
   carregarClientes();
 
+  // Incremento 9: a tela agora é uma seção da página única — recarrega a
+  // lista sempre que o atendente volta pra essa aba, pra pegar clientes
+  // cadastrados enquanto ele estava em outra tela.
+  document.addEventListener("tela:ativada", (evento) => {
+    if (evento.detail.tela === "clientes") carregarClientes();
+  });
+
   form.addEventListener("submit", async (evento) => {
     evento.preventDefault();
     limparFeedback(feedback);
