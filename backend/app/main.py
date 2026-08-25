@@ -110,6 +110,21 @@ app.include_router(produtos.router)
 app.include_router(pedidos.router)
 
 
+@app.middleware("http")
+async def sem_cache_agressivo_no_frontend(request: Request, call_next):
+    """StaticFiles não manda Cache-Control por padrão — o navegador cacheia
+    JS/CSS por tempo indefinido (heurística baseada em Last-Modified), então
+    uma correção de bug pode ficar "invisível" pra quem já visitou o site
+    antes, até o cache expirar sozinho. `no-cache` força o navegador a
+    sempre revalidar com o servidor (ETag) antes de reusar o arquivo — o
+    arquivo raramente muda, então a resposta normal é um 304 barato, mas
+    nunca fica servindo uma versão desatualizada silenciosamente."""
+    resposta = await call_next(request)
+    if request.url.path.startswith(("/js/", "/css/")):
+        resposta.headers["Cache-Control"] = "no-cache"
+    return resposta
+
+
 @app.get("/health", tags=["infra"])
 def health_check() -> dict[str, str]:
     """Verificação simples de que a API está no ar."""
