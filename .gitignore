@@ -33,3 +33,8 @@ Thumbs.db
 
 # --- Logs ---
 *.log
+
+# --- Auditoria ---
+# Bundle git gerado pela auditoria como evidência/baseline (Anexo B do
+# Plano de Auditoria) — é uma cópia do repositório, não se versiona.
+*.bundle

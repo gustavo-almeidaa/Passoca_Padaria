@@ -1,4 +1,11 @@
-fastapi==0.115.6
+# fastapi 0.121+ é o mínimo que aceita starlette 0.49.x. O bump (feito no
+# Incremento 16.1, 2026-08-27) corrige o PYSEC-2026-1942 — ReDoS no parsing
+# do header `Range` do StaticFiles, que este sistema usa pra servir o
+# frontend e está exposto na internet. starlette pinado explícito porque a
+# vulnerabilidade é dele (fastapi só reexporta). Não subimos pra última
+# (0.128.x) de propósito: menos superfície de mudança.
+fastapi==0.121.3
+starlette==0.49.3
 uvicorn[standard]==0.32.1
 sqlalchemy==2.0.36
 # Pin explícito: sqlalchemy depende de greenlet, e a versão mais recente

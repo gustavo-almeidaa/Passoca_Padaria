@@ -1,0 +1,46 @@
+# Configuração de ferramental de qualidade — Incremento 16 (auditoria A-05/A-08).
+#
+# Não há build empacotado aqui (o deploy roda `uvicorn app.main:app` direto,
+# ver render.yaml); este arquivo existe só para configurar ruff, bandit e
+# pytest num lugar só.
+
+[tool.ruff]
+line-length = 100
+extend-exclude = [".venv", "migrations"]  # Alembic gera/gerencia; estilo próprio
+
+[tool.ruff.lint]
+# Conjunto deliberadamente enxuto: erros reais (E/F), ordenação de import (I),
+# armadilhas comuns (B), comprehensions (C4), simplificações óbvias (SIM) e
+# regras próprias do ruff (RUF). Ficam DE FORA, de propósito:
+#   - UP (pyupgrade): sugere sintaxe PEP 604 (`X | None`) que quebra em
+#     runtime no Python 3.9 do dev local — tanto o Pydantic quanto o
+#     SQLAlchemy avaliam a anotação como string e o operador `|` só existe
+#     a partir do 3.10. O Render roda 3.12, mas enquanto o dev local for
+#     3.9 a base tem que valer nos dois. Reavaliar se/quando o dev local
+#     subir para 3.12 (relacionado ao tema de paridade de ambiente da
+#     auditoria A-04).
+#   - DTZ (datetime sem tzinfo): o domínio usa datetime naive por decisão
+#     de projeto; trocar isso é mudança de design, não item de lint.
+#   - ANN/D: anotação e docstring obrigatórias em tudo — ruído sem retorno
+#     para um projeto deste tamanho.
+select = ["E", "F", "I", "B", "C4", "SIM", "RUF"]
+
+[tool.ruff.lint.flake8-bugbear]
+# Padrão do FastAPI: `def rota(x = Depends(...))` dispara B008
+# (function-call-in-default-argument) sem ser bug. Estas chamadas são o
+# mecanismo de injeção de dependência do framework.
+extend-immutable-calls = [
+    "fastapi.Depends",
+    "fastapi.Query",
+    "fastapi.Path",
+    "fastapi.Header",
+    "fastapi.Cookie",
+    "fastapi.Body",
+    "fastapi.Form",
+    "fastapi.File",
+    "fastapi.Security",
+]
+
+[tool.bandit]
+# Varre só o código da aplicação; testes e venv não vão para produção.
+exclude_dirs = [".venv", "tests", "migrations"]

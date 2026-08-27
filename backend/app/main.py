@@ -27,7 +27,11 @@ FRONTEND_DIR = Path(__file__).resolve().parent.parent.parent / "frontend"
 
 logger = logging.getLogger("passoca")
 
-DEV_SESSION_SECRET_KEY = "dev-somente-troque-em-producao"
+# Não é um segredo: é o valor-sentinela de desenvolvimento. A função
+# _validar_configuracao_producao() abaixo RECUSA subir com ENVIRONMENT=
+# production enquanto a chave for exatamente esta. (nosec: B105 falso
+# positivo — string de comparação, não credencial.)
+DEV_SESSION_SECRET_KEY = "dev-somente-troque-em-producao"  # nosec B105
 
 
 def _validar_configuracao_producao() -> None:

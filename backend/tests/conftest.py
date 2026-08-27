@@ -11,10 +11,10 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
+from app import models  # noqa: F401  (necessário para popular Base.metadata)
 from app.api.deps import get_usuario_atual
 from app.core.database import Base, get_db
 from app.core.security import hash_senha
-from app import models  # noqa: F401  (necessário para popular Base.metadata)
 from app.main import app
 from app.models.usuario import PerfilUsuario, Usuario
 

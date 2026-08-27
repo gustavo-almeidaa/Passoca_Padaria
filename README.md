@@ -1,5 +1,7 @@
 # Passoca_Padaria
 
+[![CI](https://github.com/gustavo-almeidaa/Passoca_Padaria/actions/workflows/ci.yml/badge.svg)](https://github.com/gustavo-almeidaa/Passoca_Padaria/actions/workflows/ci.yml)
+
 Sistema de encomendas para a **Padaria do Passoca** — substitui o controle
 manual (caderno / WhatsApp) por um sistema simples de cadastro de clientes,
 produtos e pedidos, com rastreabilidade de status do recebimento até a
@@ -36,6 +38,17 @@ Incrementos recentes:
   proprietária — "excluir" foi implementado como desativar
   (`ativo=false`), não apagar de vez; ver `CLAUDE.md`, seção 5, pra o
   motivo dessa escolha.
+- **16 — CI e ferramental de qualidade** (2026-08-27): executa o plano de
+  ação da auditoria de software (ver `CLAUDE.md`, seção 2). GitHub Actions
+  roda `pytest` + `ruff` + `bandit` + `pip-audit` a cada push/PR (A-05);
+  `ruff`/`bandit` configurados em `backend/pyproject.toml` (A-08); tags
+  `incremento-01..15` criadas retroativamente (A-06).
+- **16.1 — Bump de dependências vulneráveis** (2026-08-27): `fastapi` para
+  0.121.3 + `starlette` para 0.49.3, corrigindo o ReDoS no parsing do
+  header `Range` do `StaticFiles` (PYSEC-2026-1942) e mais um CVE. Os 7
+  CVEs restantes da baseline não têm correção publicada e/ou não são
+  alcançáveis no código — justificativa individual em
+  `.github/workflows/ci.yml`.
 
 O sistema passou a depender de internet, já que o banco agora é gerenciado
 na nuvem (decisão registrada: funcionar offline não é requisito do MVP).
@@ -142,6 +155,37 @@ tiver nenhum usuário, a conta da proprietária é criada automaticamente.
 Com o servidor no ar: o sistema fica em `http://127.0.0.1:8000/` — pede
 login antes de mostrar qualquer tela — e a documentação interativa
 (Swagger) em `http://127.0.0.1:8000/docs`.
+
+## Qualidade e CI (Incremento 16)
+
+O CI (`.github/workflows/ci.yml`) roda a cada push/PR na `main`, em Python
+3.12.7 (mesma versão do Render):
+
+| Comando | O que checa |
+|---|---|
+| `pytest -q` | Suíte de testes (SQLite isolado) |
+| `ruff check .` | Lint e ordenação de import — config em `backend/pyproject.toml` |
+| `bandit -c pyproject.toml -r app` | Varredura de segurança do código da aplicação |
+| `pip-audit -r requirements.txt` | CVE conhecido nas dependências de produção |
+
+Rodar tudo localmente (de dentro de `backend/`, com o venv ativo):
+
+```bash
+pytest -q && ruff check . && bandit -c pyproject.toml -r app && pip-audit -r requirements.txt
+```
+
+> **Windows:** o `pip-audit` quebra com `UnicodeDecodeError` quando o
+> caminho do projeto tem acento (bug do `pip-api` ao ler a saída do
+> `pip`). Contorne com `PYTHONUTF8=1 pip-audit -r requirements.txt`. No CI
+> (Linux) não acontece.
+
+Hook opcional pra rodar o `ruff` antes de cada commit:
+`pip install pre-commit && pre-commit install` (config em
+`.pre-commit-config.yaml`).
+
+**Nota:** o CI **não** bloqueia o deploy do Render — `autoDeploy` continua
+ligado. O gate de deploy fica pra um incremento futuro (ver `CLAUDE.md`,
+seção 11).
 
 ## Deploy (Render)
 

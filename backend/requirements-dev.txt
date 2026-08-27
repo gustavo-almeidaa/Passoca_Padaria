@@ -1,3 +1,11 @@
 -r requirements.txt
 pytest==8.3.4
 httpx==0.28.1
+
+# Ferramental de qualidade — Incremento 16 (auditoria A-05/A-08).
+# Configuração em pyproject.toml. Rodam no CI (.github/workflows/ci.yml) e
+# dá pra rodar local: `ruff check .`, `bandit -c pyproject.toml -r app`,
+# `pip-audit`.
+ruff==0.16.4
+bandit[toml]==1.8.6
+pip-audit==2.9.0
