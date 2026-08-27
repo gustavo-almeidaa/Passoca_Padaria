@@ -54,16 +54,24 @@ não é aceitável neste projeto. Cada ciclo de trabalho segue este protocolo:
    confirmar o escopo do incremento — a menos que ele já tenha dado essa
    autonomia explicitamente para incrementos pequenos e de baixo risco.
 3. **Implementar** só o que foi combinado no escopo.
-4. **Autotestar** antes de reportar como pronto: rodar o que existir de
-   testes automatizados, e no mínimo validar manualmente os caminhos felizes
-   e os de erro mais óbvios (ex.: RN01 rejeitando pedido com menos de 24h).
+4. **Autotestar** antes de reportar como pronto: rodar a suíte automatizada
+   (`cd backend && pytest -q`) e o ferramental de qualidade
+   (`ruff check .`, `bandit -c pyproject.toml -r app`, `pip-audit`), e no
+   mínimo validar manualmente os caminhos felizes e os de erro mais óbvios
+   (ex.: RN01 rejeitando pedido com menos de 24h). O CI
+   (`.github/workflows/ci.yml`) roda isso a cada push/PR desde o Incremento
+   16 — mas não substitui o autoteste local antes de abrir o PR.
 5. **Reportar de forma estruturada:**
    - O que foi entregue (e o que ficou de fora do combinado, se algo mudou).
    - O que foi testado e como.
    - Riscos, dívidas técnicas ou limitações conhecidas — **nunca esconder
      um problema conhecido para o incremento "parecer" mais pronto**.
    - Sugestão do próximo incremento.
-6. Só então iniciar o ciclo seguinte.
+6. **Fechar o incremento no controle de versão:** criar a tag anotada
+   `incremento-NN` no commit de fecho (`git tag -a incremento-NN -m "..."`)
+   e enviá-la (`git push origin incremento-NN`). Isso mantém cada
+   incremento recuperável e revertível por referência (auditoria A-06).
+7. Só então iniciar o ciclo seguinte.
 
 Isso vale tanto para o desenvolvimento inicial quanto para qualquer mudança
 futura — inclusive uma mudança de requisito no meio do caminho (o que é
@@ -149,6 +157,17 @@ detalhe — incremental não significa "perguntar toda linha de código".
 - **Não presuma um estágio "incremento 1/2/3" acadêmico daqui pra frente.**
   Essa lógica foi útil pra faculdade; no projeto real, trate os itens abaixo
   como backlog priorizado (ver seção 13), não como entregas de seminário.
+- **Auditoria (2026-08-27):** o projeto passou por uma auditoria de
+  software (Plano de Auditoria v1.0, Rodada 1, baseline no commit
+  `7239ea6`). Resultado: 8 achados (2 críticos — A-01 trilha de auditoria,
+  A-02 força-bruta no login; 1 alto — A-03 autorização plana) e 8 lacunas
+  de prontidão SaaS (L-01 a L-08). Os incrementos 16+ executam o plano de
+  ação da auditoria, por ordem de severidade. **Condição de bloqueio
+  registrada: não comercializar para terceiros com A-01, A-02 ou A-03 em
+  aberto, nem com L-01 (modelo de isolamento multi-tenant) indefinido.**
+  - **Incremento 16 (feito):** CI no GitHub Actions rodando `pytest` +
+    `ruff` + `bandit` + `pip-audit` a cada push/PR (A-05); ferramental de
+    qualidade adotado (A-08); tags retroativas `incremento-01..15` (A-06).
 
 ## 3. Visão do negócio
 
@@ -376,6 +395,25 @@ Não escolha estes itens sozinho sem perguntar primeiro, mesmo que pareça
 - [x] Necessidade de funcionar offline — **não é requisito do MVP**,
       decidido em 2026-08-25 junto com a escolha do banco gerenciado
       (que já pressupõe internet disponível).
+- [x] Integração contínua — **GitHub Actions**, decidido no Incremento 16
+      (2026-08-27, auditoria A-05). `.github/workflows/ci.yml` roda
+      `pytest` + `ruff` + `bandit` + `pip-audit` a cada push/PR na `main`,
+      em Python 3.12.7 (mesma versão do Render).
+- [ ] Gate de deploy (CI verde antes de publicar no Render) — **em
+      aberto**. No Incremento 16 o `autoDeploy` do Render ficou ligado
+      (decisão do dono, 2026-08-27): o CI roda mas não bloqueia o deploy.
+      Fechar isso exige criar o Deploy Hook no painel do Render + guardá-lo
+      como secret `RENDER_DEPLOY_HOOK` no GitHub, e então trocar o workflow
+      pra disparar o deploy só no fim do CI (com `autoDeploy: false` no
+      `render.yaml`). Fica pra um incremento futuro.
+- [ ] Bump de dependências vulneráveis — **em aberto**. O `pip-audit` do
+      Incremento 16 achou 9 CVEs na baseline (7 em `starlette` via
+      `fastapi==0.115.6`, com destaque pro PYSEC-2026-1942: ReDoS no
+      parsing de `Range` do `StaticFiles`, que este sistema usa e está
+      exposto; 1 em `python-dotenv`, 1 em `click`). Estão silenciados por
+      ID no CI (`--ignore-vuln`) até um incremento dedicado subir
+      `fastapi`/`starlette`/`uvicorn` e testar. Ver relatório do
+      Incremento 16.
 
 ## 12. Glossário
 

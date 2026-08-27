@@ -12,14 +12,14 @@ from app.models.produto import CategoriaProduto, Produto, UnidadeProduto
 from app.models.usuario import PerfilUsuario, Usuario
 
 __all__ = [
-    "Cliente",
-    "Produto",
-    "CategoriaProduto",
-    "UnidadeProduto",
-    "Pedido",
-    "StatusPedido",
     "TRANSICOES_VALIDAS",
+    "CategoriaProduto",
+    "Cliente",
     "ItemPedido",
-    "Usuario",
+    "Pedido",
     "PerfilUsuario",
+    "Produto",
+    "StatusPedido",
+    "UnidadeProduto",
+    "Usuario",
 ]

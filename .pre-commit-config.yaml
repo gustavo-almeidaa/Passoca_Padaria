@@ -1,0 +1,16 @@
+# Hook local opcional — Incremento 16 (auditoria A-08).
+#
+# Roda o ruff antes de cada commit, pegando problema de lint sem esperar o
+# CI. É conveniência de quem desenvolve, não uma barreira do projeto (a
+# barreira é o CI em .github/workflows/ci.yml).
+#
+# Para ativar:  pip install pre-commit && pre-commit install
+# Para rodar em tudo agora:  pre-commit run --all-files
+
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.16.4
+    hooks:
+      - id: ruff
+        args: [--fix]
+        files: ^backend/

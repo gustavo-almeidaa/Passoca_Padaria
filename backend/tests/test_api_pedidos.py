@@ -303,7 +303,7 @@ class TestListarPedidosAPI:
         assert pedido["id"] in ids
 
     def test_lista_vazia_fora_do_periodo(self, client):
-        pedido = _criar_pedido(client, delta=timedelta(days=3))
+        _criar_pedido(client, delta=timedelta(days=3))
         outra_data, _ = _entrega(timedelta(days=30))
 
         resp = client.get(f"/pedidos?data_inicio={outra_data}")
