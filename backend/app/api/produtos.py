@@ -9,19 +9,35 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_usuario_atual
 from app.core.database import get_db
 from app.models.produto import Produto
+from app.models.usuario import Usuario
 from app.schemas.produto import ProdutoCreate, ProdutoRead
+from app.services import auditoria
 
 # Incremento 12: exige login pra qualquer rota de produto — sem restrição
-# por perfil ainda (CLAUDE.md, seção 11).
+# por perfil ainda (CLAUDE.md, seção 11). Incremento 18: criar/editar
+# entram na trilha de auditoria (A-01), com atenção especial ao preço.
 router = APIRouter(
     prefix="/produtos", tags=["produtos"], dependencies=[Depends(get_usuario_atual)]
 )
 
 
 @router.post("", response_model=ProdutoRead, status_code=status.HTTP_201_CREATED)
-def criar_produto(payload: ProdutoCreate, db: Session = Depends(get_db)) -> Produto:
+def criar_produto(
+    payload: ProdutoCreate,
+    db: Session = Depends(get_db),
+    usuario_atual: Usuario = Depends(get_usuario_atual),
+) -> Produto:
     produto = Produto(**payload.model_dump())
     db.add(produto)
+    db.flush()  # atribui produto.id para o evento de auditoria
+    auditoria.registrar_evento(
+        db,
+        usuario=usuario_atual,
+        entidade=auditoria.ENTIDADE_PRODUTO,
+        entidade_id=produto.id,
+        acao="criar",
+        posterior=auditoria.snapshot_produto(produto),
+    )
     db.commit()
     db.refresh(produto)
     return produto
@@ -50,7 +66,10 @@ def obter_produto(produto_id: int, db: Session = Depends(get_db)) -> Produto:
 
 @router.put("/{produto_id}", response_model=ProdutoRead)
 def editar_produto(
-    produto_id: int, payload: ProdutoCreate, db: Session = Depends(get_db)
+    produto_id: int,
+    payload: ProdutoCreate,
+    db: Session = Depends(get_db),
+    usuario_atual: Usuario = Depends(get_usuario_atual),
 ) -> Produto:
     """Edita um produto já cadastrado (todos os campos — decisão do
     usuário, 2026-08-25). Não afeta pedidos já feitos: `preco_unitario`
@@ -60,9 +79,19 @@ def editar_produto(
     if produto is None:
         raise HTTPException(status_code=404, detail="Produto não encontrado.")
 
+    anterior = auditoria.snapshot_produto(produto)
     for campo, valor in payload.model_dump().items():
         setattr(produto, campo, valor)
 
+    auditoria.registrar_evento(
+        db,
+        usuario=usuario_atual,
+        entidade=auditoria.ENTIDADE_PRODUTO,
+        entidade_id=produto.id,
+        acao="editar",
+        anterior=anterior,
+        posterior=auditoria.snapshot_produto(produto),
+    )
     db.commit()
     db.refresh(produto)
     return produto

@@ -178,6 +178,15 @@ detalhe — incremental não significa "perguntar toda linha de código".
     nunca trava — decisão do usuário); 5–9 falhas na janela de 15 min =
     atraso progressivo, 10+ = `429` sem checar a senha. Lógica em
     `app/services/rate_limit.py`. **A-02 sai da condição de bloqueio.**
+  - **Incremento 18 (feito):** trilha de auditoria (A-01). Tabela
+    `eventos_auditoria` (só escrita), gravada no mesmo commit da operação
+    de negócio: pedido (criar/avançar/confirmar sinal/cancelar), produto
+    (criar/editar), usuário (criar/desativar/trocar senha — nunca o valor
+    da senha). O usuário logado passou a ser argumento obrigatório das
+    funções de `services/pedidos.py`. Leitura em `GET /auditoria`, só
+    proprietária. Helper em `app/services/auditoria.py`. **A-01 sai da
+    condição de bloqueio** — restam A-03 (depende disto) e L-01. Frontend
+    da trilha fica pro Incremento 18.1.
 
 ## 3. Visão do negócio
 
@@ -248,6 +257,11 @@ implementar, não são RF confirmados):**
   com o mesmo acesso pra qualquer perfil autenticado.
 - Edição de pedido já criado (o levantamento original só previa criar/cancelar).
 - Histórico de pedidos por cliente.
+- ~~Trilha de auditoria de operações sensíveis~~ — **feito em 2026-08-27
+  (Incremento 18, auditoria A-01)**: tabela `eventos_auditoria` registra
+  autor + estado antes/depois de toda operação que muda estado de pedido,
+  preço de produto ou cadastro de usuário. `GET /auditoria` (só
+  proprietária) pra consultar. Falta a tela (Incremento 18.1).
 - ~~Trocar a própria senha (logado)~~ — **feito em 2026-08-25 (Incremento
   14)**: usuário logado troca a senha confirmando a atual, em
   `/auth/trocar-senha` — mas só a proprietária pode usar (ver acima).

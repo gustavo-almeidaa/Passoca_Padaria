@@ -6,6 +6,7 @@ do model tiver sido importada em algum lugar antes de `Base.metadata` ser
 inspecionado. Centralizar aqui evita esquecer de registrar um model novo.
 """
 from app.models.cliente import Cliente
+from app.models.evento_auditoria import EventoAuditoria
 from app.models.item_pedido import ItemPedido
 from app.models.pedido import TRANSICOES_VALIDAS, Pedido, StatusPedido
 from app.models.produto import CategoriaProduto, Produto, UnidadeProduto
@@ -16,6 +17,7 @@ __all__ = [
     "TRANSICOES_VALIDAS",
     "CategoriaProduto",
     "Cliente",
+    "EventoAuditoria",
     "ItemPedido",
     "Pedido",
     "PerfilUsuario",

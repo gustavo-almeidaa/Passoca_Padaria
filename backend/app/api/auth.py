@@ -17,7 +17,7 @@ from app.core.database import get_db
 from app.core.security import hash_senha, verificar_senha
 from app.models.usuario import PerfilUsuario, Usuario
 from app.schemas.usuario import TrocarSenhaRequest, UsuarioCreate, UsuarioLogin, UsuarioRead
-from app.services import rate_limit
+from app.services import auditoria, rate_limit
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -96,6 +96,15 @@ def trocar_senha(
         )
 
     usuario_atual.senha_hash = hash_senha(payload.senha_nova)
+    auditoria.registrar_evento(
+        db,
+        usuario=usuario_atual,
+        entidade=auditoria.ENTIDADE_USUARIO,
+        entidade_id=usuario_atual.id,
+        acao="trocar_senha",
+        # Nunca o valor da senha — só o fato de ter sido trocada.
+        posterior={"senha": "alterada"},
+    )
     db.commit()
 
 
@@ -114,7 +123,7 @@ def criar_usuario(
     payload: UsuarioCreate,
     db: Session = Depends(get_db),
     # Incremento 15: só a proprietária cria usuário (decisão do usuário).
-    _usuario_atual: Usuario = Depends(exigir_proprietaria),
+    usuario_atual: Usuario = Depends(exigir_proprietaria),
 ) -> Usuario:
     if db.query(Usuario).filter(Usuario.email == payload.email).first() is not None:
         raise HTTPException(
@@ -129,6 +138,19 @@ def criar_usuario(
         perfil=payload.perfil,
     )
     db.add(usuario)
+    db.flush()  # atribui usuario.id para o evento de auditoria
+    auditoria.registrar_evento(
+        db,
+        usuario=usuario_atual,
+        entidade=auditoria.ENTIDADE_USUARIO,
+        entidade_id=usuario.id,
+        acao="criar",
+        posterior={
+            "nome": usuario.nome,
+            "email": usuario.email,
+            "perfil": usuario.perfil.value,
+        },
+    )
     db.commit()
     db.refresh(usuario)
     return usuario
@@ -176,4 +198,13 @@ def desativar_usuario(
             )
 
     usuario.ativo = False
+    auditoria.registrar_evento(
+        db,
+        usuario=usuario_atual,
+        entidade=auditoria.ENTIDADE_USUARIO,
+        entidade_id=usuario.id,
+        acao="desativar",
+        anterior={"ativo": True},
+        posterior={"ativo": False},
+    )
     db.commit()

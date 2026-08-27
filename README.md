@@ -54,6 +54,12 @@ Incrementos recentes:
   15 min — de 5 a 9 aplicam atraso progressivo, 10+ retornam `429` sem
   checar a senha. A conta nunca trava, só o IP (assim um ataque remoto não
   tranca a proprietária para fora). Lógica em `app/services/rate_limit.py`.
+- **18 — Trilha de auditoria** (2026-08-27, auditoria A-01): tabela
+  `eventos_auditoria` (só escrita) registra quem fez, quando, e o estado
+  antes/depois de toda operação sensível — pedido (criar/avançar/confirmar
+  sinal/cancelar), produto (criar/editar), usuário (criar/desativar/trocar
+  senha, sem o valor). Gravada no mesmo commit da operação. Consulta em
+  `GET /auditoria` (só proprietária). A tela fica pro Incremento 18.1.
 
 O sistema passou a depender de internet, já que o banco agora é gerenciado
 na nuvem (decisão registrada: funcionar offline não é requisito do MVP).
@@ -64,11 +70,12 @@ na nuvem (decisão registrada: funcionar offline não é requisito do MVP).
 Passoca_Padaria/
 ├── backend/
 │   ├── app/
-│   │   ├── models/       # modelos SQLAlchemy (Cliente, Produto, Pedido, ItemPedido, Usuario)
-│   │   ├── schemas/      # schemas Pydantic — Cliente, Produto, Pedido e Usuario
-│   │   ├── services/     # regras de negócio — RN01-RN05 aplicadas no backend
-│   │   ├── api/          # rotas FastAPI — /clientes, /produtos, /pedidos, /auth
-│   │   │                 # + deps.py (dependência de autenticação)
+│   │   ├── models/       # modelos SQLAlchemy (Cliente, Produto, Pedido, ItemPedido,
+│   │   │                 # Usuario, TentativaLogin, EventoAuditoria)
+│   │   ├── schemas/      # schemas Pydantic — Cliente, Produto, Pedido, Usuario, Auditoria
+│   │   ├── services/     # regras de negócio — RN01-RN05, rate_limit (A-02), auditoria (A-01)
+│   │   ├── api/          # rotas FastAPI — /clientes, /produtos, /pedidos, /auth, /auditoria
+│   │   │                 # + deps.py (autenticação + IP do cliente)
 │   │   ├── main.py       # ponto de entrada da API (app FastAPI)
 │   │   └── core/         # config (settings), conexão com banco e security.py (hash de senha)
 │   ├── migrations/       # Alembic — histórico de mudanças de schema
@@ -152,10 +159,10 @@ uvicorn app.main:app --reload      # sobe a API + frontend em http://127.0.0.1:8
 ```
 
 Isso cria o schema completo (`clientes`, `produtos`, `pedidos`,
-`itens_pedido`, `usuarios`, `tentativas_login`) no banco Postgres do Neon e
-roda os 148 testes automatizados (schema + API + service de pedidos +
-autenticação + limite de tentativas — cada teste usa um SQLite em memória
-isolado, não toca no Neon). No primeiro
+`itens_pedido`, `usuarios`, `tentativas_login`, `eventos_auditoria`) no
+banco Postgres do Neon e roda os 172 testes automatizados (schema + API +
+services + autenticação + limite de tentativas + trilha de auditoria —
+cada teste usa um SQLite em memória isolado, não toca no Neon). No primeiro
 boot, se `ADMIN_EMAIL`/`ADMIN_SENHA` estiverem configurados e o banco não
 tiver nenhum usuário, a conta da proprietária é criada automaticamente.
 Com o servidor no ar: o sistema fica em `http://127.0.0.1:8000/` — pede
@@ -244,6 +251,7 @@ login (cookie) — retornam `401` sem ela.
 | `POST` | `/auth/usuarios` | Cria outro usuário — **só proprietária** |
 | `DELETE` | `/auth/usuarios/{id}` | Desativa um usuário (`ativo=false`, não apaga) — **só proprietária** |
 | `POST` | `/auth/trocar-senha` | Troca a própria senha (exige a senha atual) — **só proprietária** |
+| `GET` | `/auditoria` | Trilha de operações sensíveis — filtros `entidade`, `entidade_id`, `data_inicio`, `data_fim`, `limite` — **só proprietária** |
 | `POST` | `/clientes` | Cadastrar cliente (RF01) |
 | `GET` | `/clientes` | Listar clientes |
 | `GET` | `/clientes/{id}` | Consultar um cliente |
