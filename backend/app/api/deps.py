@@ -6,6 +6,8 @@ Usuario correspondente, e nega acesso quando não tem sessão válida.
 """
 from __future__ import annotations
 
+from collections.abc import Callable
+
 from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
@@ -17,6 +19,18 @@ MENSAGEM_SO_PROPRIETARIA = (
     "Só a proprietária pode gerenciar usuários (decisão registrada em "
     "CLAUDE.md, seção 11 — 2026-08-25, pra evitar erro ou troca indesejada)."
 )
+
+_ROTULO_PERFIL = {
+    PerfilUsuario.PROPRIETARIA: "proprietária",
+    PerfilUsuario.ATENDENTE: "atendente",
+    PerfilUsuario.PADEIRO: "padeiro(a)",
+}
+
+# Incremento 19 (auditoria A-03): operações de balcão que mudam dados
+# (cadastrar cliente, mexer em produto, registrar/confirmar/cancelar
+# pedido) são da proprietária e do atendente. O padeiro tem acesso de
+# leitura + avançar status de produção — nada além disso.
+PERFIS_BALCAO = (PerfilUsuario.PROPRIETARIA, PerfilUsuario.ATENDENTE)
 
 
 def obter_ip_cliente(request: Request) -> str:
@@ -57,11 +71,38 @@ def get_usuario_atual(request: Request, db: Session = Depends(get_db)) -> Usuari
 
 
 def exigir_proprietaria(usuario_atual: Usuario = Depends(get_usuario_atual)) -> Usuario:
-    """Gate de perfil (Incremento 15) — primeira e única restrição por
-    perfil que existe até agora (as outras rotas continuam iguais pra
-    qualquer usuário autenticado, ver CLAUDE.md seção 11)."""
+    """Gate exclusivo da proprietária (Incremento 15) — aba Usuários e
+    trilha de auditoria. Mensagem própria porque referencia a decisão
+    registrada no CLAUDE.md."""
     if usuario_atual.perfil != PerfilUsuario.PROPRIETARIA:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail=MENSAGEM_SO_PROPRIETARIA
         )
     return usuario_atual
+
+
+def exigir_perfis(
+    *perfis: PerfilUsuario, acao: str = "fazer isso"
+) -> Callable[..., Usuario]:
+    """Fábrica de dependência de perfil (Incremento 19, auditoria A-03).
+
+    Uso: `Depends(exigir_perfis(*PERFIS_BALCAO, acao="cancelar pedidos"))`.
+    Retorna o próprio usuário logado, então serve tanto como gate em
+    `dependencies=[...]` quanto como parâmetro injetado (ex.: nas rotas que
+    também gravam a trilha de auditoria).
+    """
+    permitidos = set(perfis)
+
+    def _checar(usuario_atual: Usuario = Depends(get_usuario_atual)) -> Usuario:
+        if usuario_atual.perfil not in permitidos:
+            quem = ", ".join(_ROTULO_PERFIL[p] for p in perfis)
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=(
+                    f"Seu perfil ({_ROTULO_PERFIL[usuario_atual.perfil]}) não "
+                    f"pode {acao}. Permitido para: {quem}."
+                ),
+            )
+        return usuario_atual
+
+    return _checar

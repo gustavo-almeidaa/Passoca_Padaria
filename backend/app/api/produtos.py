@@ -6,16 +6,17 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_usuario_atual
+from app.api.deps import PERFIS_BALCAO, exigir_perfis, get_usuario_atual
 from app.core.database import get_db
 from app.models.produto import Produto
 from app.models.usuario import Usuario
 from app.schemas.produto import ProdutoCreate, ProdutoRead
 from app.services import auditoria
 
-# Incremento 12: exige login pra qualquer rota de produto — sem restrição
-# por perfil ainda (CLAUDE.md, seção 11). Incremento 18: criar/editar
-# entram na trilha de auditoria (A-01), com atenção especial ao preço.
+# Incremento 12: exige login pra qualquer rota de produto. Incremento 18:
+# criar/editar entram na trilha de auditoria (A-01), com atenção ao preço.
+# Incremento 19 (A-03): criar/editar são operação de balcão — padeiro não
+# mexe em produto (só lê). GET continua aberto a qualquer perfil.
 router = APIRouter(
     prefix="/produtos", tags=["produtos"], dependencies=[Depends(get_usuario_atual)]
 )
@@ -25,7 +26,9 @@ router = APIRouter(
 def criar_produto(
     payload: ProdutoCreate,
     db: Session = Depends(get_db),
-    usuario_atual: Usuario = Depends(get_usuario_atual),
+    usuario_atual: Usuario = Depends(
+        exigir_perfis(*PERFIS_BALCAO, acao="cadastrar produtos")
+    ),
 ) -> Produto:
     produto = Produto(**payload.model_dump())
     db.add(produto)
@@ -69,7 +72,9 @@ def editar_produto(
     produto_id: int,
     payload: ProdutoCreate,
     db: Session = Depends(get_db),
-    usuario_atual: Usuario = Depends(get_usuario_atual),
+    usuario_atual: Usuario = Depends(
+        exigir_perfis(*PERFIS_BALCAO, acao="editar produtos")
+    ),
 ) -> Produto:
     """Edita um produto já cadastrado (todos os campos — decisão do
     usuário, 2026-08-25). Não afeta pedidos já feitos: `preco_unitario`

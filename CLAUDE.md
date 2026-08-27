@@ -165,6 +165,9 @@ detalhe — incremental não significa "perguntar toda linha de código".
   ação da auditoria, por ordem de severidade. **Condição de bloqueio
   registrada: não comercializar para terceiros com A-01, A-02 ou A-03 em
   aberto, nem com L-01 (modelo de isolamento multi-tenant) indefinido.**
+  Status em 2026-08-27: **A-01, A-02 e A-03 fechados** (Incrementos 17, 18,
+  19). Restam da auditoria: A-04 (paridade de teste com Postgres), A-07
+  (desempenho + plano de hospedagem), e as lacunas SaaS L-01..L-08.
   - **Incremento 16 (feito):** CI no GitHub Actions rodando `pytest` +
     `ruff` + `bandit` + `pip-audit` a cada push/PR (A-05); ferramental de
     qualidade adotado (A-08); tags retroativas `incremento-01..15` (A-06).
@@ -187,6 +190,12 @@ detalhe — incremental não significa "perguntar toda linha de código".
     proprietária. Helper em `app/services/auditoria.py`. **A-01 sai da
     condição de bloqueio** — restam A-03 (depende disto) e L-01. Frontend
     da trilha fica pro Incremento 18.1.
+  - **Incremento 19 (feito):** matriz de permissão por perfil (A-03),
+    aplicada rota a rota via `api/deps.py::exigir_perfis`. Padeiro = só
+    leitura + avançar status; atendente = tudo de balcão (inclusive editar
+    produto e cancelar pedido — decisões do usuário); proprietária = tudo.
+    **A-03 sai da condição de bloqueio — dos 3 críticos/altos, nenhum
+    resta.** Falta o gate no frontend (esconder botões) = Incremento 19.1.
 
 ## 3. Visão do negócio
 
@@ -248,13 +257,19 @@ branches e comentários de código para rastreabilidade (`feat: RF03 registro de
 **Backlog real além do levantamento acadêmico (avaliar com o usuário antes de
 implementar, não são RF confirmados):**
 - ~~Autenticação/login por perfil~~ — **feito em 2026-08-25 (Incremento 12)**.
-  Permissão diferenciada por perfil **parcialmente feita em 2026-08-25
-  (Incremento 15)**: a aba/rotas de Usuários (`/auth/usuarios*` e
-  `/auth/trocar-senha`) são exclusivas da proprietária — decisão do
-  usuário, "pra evitar erro ou troca indesejada". Consequência aceita:
-  atendente/padeiro não têm autoatendimento de senha nenhum (nem a
-  própria). Todo o resto do sistema (clientes/produtos/pedidos) continua
-  com o mesmo acesso pra qualquer perfil autenticado.
+- ~~Permissão diferenciada por perfil~~ — **feita em 2026-08-27 (Incremento
+  19, auditoria A-03)**. A aba/rotas de Usuários e a trilha de auditoria já
+  eram exclusivas da proprietária (Incrementos 15 e 18). O Incremento 19
+  fechou a matriz completa, aplicada rota a rota no backend
+  (`api/deps.py::exigir_perfis`):
+  - **padeiro** — só leitura (listar/consultar) + avançar status de
+    produção. Não cadastra cliente/produto/pedido, não edita produto, não
+    confirma sinal, não cancela.
+  - **atendente** — tudo de balcão: cliente, produto (inclusive editar —
+    decisão do usuário), pedido (registrar, confirmar sinal, avançar,
+    cancelar). Não acessa Usuários nem Auditoria.
+  - **proprietária** — tudo.
+  Frontend (esconder botão sem permissão) fica pro Incremento 19.1.
 - Edição de pedido já criado (o levantamento original só previa criar/cancelar).
 - Histórico de pedidos por cliente.
 - ~~Trilha de auditoria de operações sensíveis~~ — **feito em 2026-08-27

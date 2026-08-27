@@ -29,6 +29,9 @@ select = ["E", "F", "I", "B", "C4", "SIM", "RUF"]
 # Padrão do FastAPI: `def rota(x = Depends(...))` dispara B008
 # (function-call-in-default-argument) sem ser bug. Estas chamadas são o
 # mecanismo de injeção de dependência do framework.
+# `exigir_perfis` é uma fábrica de dependência do próprio projeto
+# (Incremento 19) — mesmo caso: a chamada monta o checador uma vez, no
+# import, igual a `Depends`.
 extend-immutable-calls = [
     "fastapi.Depends",
     "fastapi.Query",
@@ -39,6 +42,7 @@ extend-immutable-calls = [
     "fastapi.Form",
     "fastapi.File",
     "fastapi.Security",
+    "app.api.deps.exigir_perfis",
 ]
 
 [tool.bandit]

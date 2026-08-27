@@ -60,6 +60,12 @@ Incrementos recentes:
   sinal/cancelar), produto (criar/editar), usuário (criar/desativar/trocar
   senha, sem o valor). Gravada no mesmo commit da operação. Consulta em
   `GET /auditoria` (só proprietária). A tela fica pro Incremento 18.1.
+- **19 — Matriz de permissão por perfil** (2026-08-27, auditoria A-03):
+  aplicada rota a rota no backend (`api/deps.py::exigir_perfis`). Padeiro
+  = leitura + avançar status de produção, nada mais. Atendente = tudo de
+  balcão (cliente, produto inclusive editar, pedido inclusive cancelar).
+  Proprietária = tudo. O gate no frontend (esconder botões) fica pro
+  Incremento 19.1.
 
 O sistema passou a depender de internet, já que o banco agora é gerenciado
 na nuvem (decisão registrada: funcionar offline não é requisito do MVP).
@@ -160,9 +166,10 @@ uvicorn app.main:app --reload      # sobe a API + frontend em http://127.0.0.1:8
 
 Isso cria o schema completo (`clientes`, `produtos`, `pedidos`,
 `itens_pedido`, `usuarios`, `tentativas_login`, `eventos_auditoria`) no
-banco Postgres do Neon e roda os 172 testes automatizados (schema + API +
-services + autenticação + limite de tentativas + trilha de auditoria —
-cada teste usa um SQLite em memória isolado, não toca no Neon). No primeiro
+banco Postgres do Neon e roda os 185 testes automatizados (schema + API +
+services + autenticação + limite de tentativas + trilha de auditoria +
+matriz de permissão — cada teste usa um SQLite em memória isolado, não
+toca no Neon). No primeiro
 boot, se `ADMIN_EMAIL`/`ADMIN_SENHA` estiverem configurados e o banco não
 tiver nenhum usuário, a conta da proprietária é criada automaticamente.
 Com o servidor no ar: o sistema fica em `http://127.0.0.1:8000/` — pede
@@ -239,7 +246,9 @@ mexer em mais nada.
 ## Endpoints disponíveis
 
 Todas as rotas abaixo, exceto `/health` e as de `/auth`, exigem sessão de
-login (cookie) — retornam `401` sem ela.
+login (cookie) — retornam `401` sem ela. Quando o perfil do usuário não
+tem acesso à operação, retornam `403` (Incremento 19 — ver coluna
+"perfil" abaixo).
 
 | Método | Rota | Descrição |
 |---|---|---|
@@ -252,19 +261,19 @@ login (cookie) — retornam `401` sem ela.
 | `DELETE` | `/auth/usuarios/{id}` | Desativa um usuário (`ativo=false`, não apaga) — **só proprietária** |
 | `POST` | `/auth/trocar-senha` | Troca a própria senha (exige a senha atual) — **só proprietária** |
 | `GET` | `/auditoria` | Trilha de operações sensíveis — filtros `entidade`, `entidade_id`, `data_inicio`, `data_fim`, `limite` — **só proprietária** |
-| `POST` | `/clientes` | Cadastrar cliente (RF01) |
-| `GET` | `/clientes` | Listar clientes |
-| `GET` | `/clientes/{id}` | Consultar um cliente |
-| `POST` | `/produtos` | Cadastrar produto (RF02) |
-| `GET` | `/produtos?ativo=true` | Listar produtos (filtro opcional por ativo) |
-| `GET` | `/produtos/{id}` | Consultar um produto |
-| `PUT` | `/produtos/{id}` | Editar produto já cadastrado (todos os campos) |
-| `POST` | `/pedidos` | Registrar pedido (RF03, RF04) — aplica RN01 |
-| `GET` | `/pedidos?data_inicio=&data_fim=` | Listar pedidos por período/dia (RF07) |
-| `GET` | `/pedidos/{id}` | Consultar um pedido, com seus itens (RF05) |
-| `POST` | `/pedidos/{id}/confirmar-sinal` | Confirma o sinal de um pedido (suporte a RN02) |
-| `POST` | `/pedidos/{id}/avancar` | Avança para a próxima etapa de produção — aplica RN02 e RN04 |
-| `POST` | `/pedidos/{id}/cancelar` | Cancela o pedido (RF06) — aplica RN03 e RN04 |
+| `POST` | `/clientes` | Cadastrar cliente (RF01) — **proprietária/atendente** |
+| `GET` | `/clientes` | Listar clientes — qualquer perfil |
+| `GET` | `/clientes/{id}` | Consultar um cliente — qualquer perfil |
+| `POST` | `/produtos` | Cadastrar produto (RF02) — **proprietária/atendente** |
+| `GET` | `/produtos?ativo=true` | Listar produtos (filtro opcional por ativo) — qualquer perfil |
+| `GET` | `/produtos/{id}` | Consultar um produto — qualquer perfil |
+| `PUT` | `/produtos/{id}` | Editar produto já cadastrado — **proprietária/atendente** |
+| `POST` | `/pedidos` | Registrar pedido (RF03, RF04) — aplica RN01 — **proprietária/atendente** |
+| `GET` | `/pedidos?data_inicio=&data_fim=` | Listar pedidos por período/dia (RF07) — qualquer perfil |
+| `GET` | `/pedidos/{id}` | Consultar um pedido, com seus itens (RF05) — qualquer perfil |
+| `POST` | `/pedidos/{id}/confirmar-sinal` | Confirma o sinal de um pedido (suporte a RN02) — **proprietária/atendente** |
+| `POST` | `/pedidos/{id}/avancar` | Avança para a próxima etapa de produção — aplica RN02 e RN04 — qualquer perfil (inclui padeiro) |
+| `POST` | `/pedidos/{id}/cancelar` | Cancela o pedido (RF06) — aplica RN03 e RN04 — **proprietária/atendente** |
 
 ## Regras de negócio principais
 

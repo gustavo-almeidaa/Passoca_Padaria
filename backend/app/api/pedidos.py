@@ -13,16 +13,18 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_usuario_atual
+from app.api.deps import PERFIS_BALCAO, exigir_perfis, get_usuario_atual
 from app.core.database import get_db
 from app.models.pedido import Pedido
 from app.models.usuario import Usuario
 from app.schemas.pedido import PedidoCreate, PedidoRead
 from app.services import pedidos as pedidos_service
 
-# Incremento 12: exige login pra qualquer rota de pedido — sem restrição
-# por perfil ainda (CLAUDE.md, seção 11). Incremento 18: o usuário logado é
-# repassado ao service para a trilha de auditoria (A-01).
+# Incremento 12: exige login pra qualquer rota de pedido. Incremento 18: o
+# usuário logado vai pro service, pra trilha de auditoria (A-01).
+# Incremento 19 (A-03): registrar, confirmar sinal e cancelar são de
+# balcão (proprietária/atendente); avançar status o padeiro também faz
+# (é o trabalho dele); GET é aberto a qualquer perfil.
 router = APIRouter(
     prefix="/pedidos", tags=["pedidos"], dependencies=[Depends(get_usuario_atual)]
 )
@@ -32,7 +34,9 @@ router = APIRouter(
 def criar_pedido(
     payload: PedidoCreate,
     db: Session = Depends(get_db),
-    usuario_atual: Usuario = Depends(get_usuario_atual),
+    usuario_atual: Usuario = Depends(
+        exigir_perfis(*PERFIS_BALCAO, acao="registrar pedidos")
+    ),
 ) -> Pedido:
     try:
         return pedidos_service.criar_pedido(db, payload, usuario=usuario_atual)
@@ -75,7 +79,9 @@ def obter_pedido(pedido_id: int, db: Session = Depends(get_db)) -> Pedido:
 def confirmar_sinal(
     pedido_id: int,
     db: Session = Depends(get_db),
-    usuario_atual: Usuario = Depends(get_usuario_atual),
+    usuario_atual: Usuario = Depends(
+        exigir_perfis(*PERFIS_BALCAO, acao="confirmar sinal")
+    ),
 ) -> Pedido:
     try:
         return pedidos_service.confirmar_sinal(db, pedido_id, usuario=usuario_atual)
@@ -104,7 +110,9 @@ def avancar_pedido(
 def cancelar_pedido(
     pedido_id: int,
     db: Session = Depends(get_db),
-    usuario_atual: Usuario = Depends(get_usuario_atual),
+    usuario_atual: Usuario = Depends(
+        exigir_perfis(*PERFIS_BALCAO, acao="cancelar pedidos")
+    ),
 ) -> Pedido:
     try:
         return pedidos_service.cancelar_pedido(db, pedido_id, usuario=usuario_atual)
