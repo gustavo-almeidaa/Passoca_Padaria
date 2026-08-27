@@ -16,7 +16,7 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 
-from app.api import auth, clientes, pedidos, produtos
+from app.api import auditoria, auth, clientes, pedidos, produtos
 from app.core.config import settings
 from app.core.database import SessionLocal
 from app.core.security import hash_senha
@@ -112,6 +112,7 @@ app.include_router(auth.router)
 app.include_router(clientes.router)
 app.include_router(produtos.router)
 app.include_router(pedidos.router)
+app.include_router(auditoria.router)
 
 
 @app.middleware("http")

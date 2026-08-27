@@ -18,7 +18,9 @@ from app.models.cliente import Cliente
 from app.models.item_pedido import ItemPedido
 from app.models.pedido import TRANSICOES_VALIDAS, Pedido, StatusPedido
 from app.models.produto import Produto
+from app.models.usuario import Usuario
 from app.schemas.pedido import PedidoCreate
+from app.services import auditoria
 
 # RN01 — antecedência mínima entre a criação do pedido e a data/hora de entrega.
 ANTECEDENCIA_MINIMA = timedelta(hours=24)
@@ -76,12 +78,19 @@ class IntervaloDeDatasInvalido(Exception):
 
 
 def criar_pedido(
-    db: Session, payload: PedidoCreate, *, agora: datetime | None = None
+    db: Session,
+    payload: PedidoCreate,
+    *,
+    usuario: Usuario,
+    agora: datetime | None = None,
 ) -> Pedido:
     """Cria um pedido (RF03) com data/hora de entrega (RF04), aplicando RN01.
 
     `agora` é injetável para permitir testes determinísticos da janela de
     24h (RN01) sem depender do relógio real da máquina que roda o teste.
+
+    `usuario` é quem está registrando o pedido — vai para a trilha de
+    auditoria (Incremento 18), no mesmo commit.
     """
     agora = agora or datetime.now()
 
@@ -130,6 +139,30 @@ def criar_pedido(
         itens=itens,
     )
     db.add(pedido)
+    db.flush()  # atribui pedido.id, necessário para o evento de auditoria
+
+    auditoria.registrar_evento(
+        db,
+        usuario=usuario,
+        entidade=auditoria.ENTIDADE_PEDIDO,
+        entidade_id=pedido.id,
+        acao="criar",
+        posterior={
+            **auditoria.snapshot_pedido(pedido),
+            "cliente_id": pedido.cliente_id,
+            "data_entrega": pedido.data_entrega.isoformat(),
+            "hora_entrega": pedido.hora_entrega.isoformat(),
+            "itens": [
+                {
+                    "produto_id": item.produto_id,
+                    "quantidade": item.quantidade,
+                    "preco_unitario": str(item.preco_unitario),
+                }
+                for item in pedido.itens
+            ],
+        },
+    )
+
     db.commit()
     db.refresh(pedido)
     return pedido
@@ -160,23 +193,36 @@ def _proximo_status_producao(atual: StatusPedido) -> StatusPedido | None:
     return next(iter(destinos))
 
 
-def confirmar_sinal(db: Session, pedido_id: int) -> Pedido:
+def confirmar_sinal(db: Session, pedido_id: int, *, usuario: Usuario) -> Pedido:
     """Confirma o sinal de um pedido (RN02), liberando a saída de `recebido`
     quando há item personalizável.
     """
     pedido = _obter_pedido_ou_404(db, pedido_id)
+    anterior = auditoria.snapshot_pedido(pedido)
+
     pedido.sinal_confirmado = True
+
+    auditoria.registrar_evento(
+        db,
+        usuario=usuario,
+        entidade=auditoria.ENTIDADE_PEDIDO,
+        entidade_id=pedido.id,
+        acao="confirmar_sinal",
+        anterior=anterior,
+        posterior=auditoria.snapshot_pedido(pedido),
+    )
     db.commit()
     db.refresh(pedido)
     return pedido
 
 
-def avancar_status(db: Session, pedido_id: int) -> Pedido:
+def avancar_status(db: Session, pedido_id: int, *, usuario: Usuario) -> Pedido:
     """Avança o pedido para a próxima etapa da produção (UC04), aplicando
     RN04 (máquina de estados) e RN02 (sinal obrigatório para sair de
     `recebido` com item personalizável).
     """
     pedido = _obter_pedido_ou_404(db, pedido_id)
+    anterior = auditoria.snapshot_pedido(pedido)
 
     proximo = _proximo_status_producao(pedido.status)
     if proximo is None:
@@ -197,13 +243,23 @@ def avancar_status(db: Session, pedido_id: int) -> Pedido:
         )
 
     pedido.status = proximo
+
+    auditoria.registrar_evento(
+        db,
+        usuario=usuario,
+        entidade=auditoria.ENTIDADE_PEDIDO,
+        entidade_id=pedido.id,
+        acao="avancar_status",
+        anterior=anterior,
+        posterior=auditoria.snapshot_pedido(pedido),
+    )
     db.commit()
     db.refresh(pedido)
     return pedido
 
 
 def cancelar_pedido(
-    db: Session, pedido_id: int, *, agora: datetime | None = None
+    db: Session, pedido_id: int, *, usuario: Usuario, agora: datetime | None = None
 ) -> Pedido:
     """Cancela um pedido (RF06), aplicando RN04 (só a partir de `recebido`
     ou `em_producao`) e RN03 (só até 12h antes da entrega).
@@ -213,6 +269,7 @@ def cancelar_pedido(
     """
     agora = agora or datetime.now()
     pedido = _obter_pedido_ou_404(db, pedido_id)
+    anterior = auditoria.snapshot_pedido(pedido)
 
     if pedido.status not in STATUS_CANCELAVEIS:
         raise TransicaoInvalida(
@@ -227,6 +284,16 @@ def cancelar_pedido(
         )
 
     pedido.status = StatusPedido.CANCELADO
+
+    auditoria.registrar_evento(
+        db,
+        usuario=usuario,
+        entidade=auditoria.ENTIDADE_PEDIDO,
+        entidade_id=pedido.id,
+        acao="cancelar",
+        anterior=anterior,
+        posterior=auditoria.snapshot_pedido(pedido),
+    )
     db.commit()
     db.refresh(pedido)
     return pedido

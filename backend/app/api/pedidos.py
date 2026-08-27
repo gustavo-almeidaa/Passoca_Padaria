@@ -16,20 +16,26 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_usuario_atual
 from app.core.database import get_db
 from app.models.pedido import Pedido
+from app.models.usuario import Usuario
 from app.schemas.pedido import PedidoCreate, PedidoRead
 from app.services import pedidos as pedidos_service
 
 # Incremento 12: exige login pra qualquer rota de pedido — sem restrição
-# por perfil ainda (CLAUDE.md, seção 11).
+# por perfil ainda (CLAUDE.md, seção 11). Incremento 18: o usuário logado é
+# repassado ao service para a trilha de auditoria (A-01).
 router = APIRouter(
     prefix="/pedidos", tags=["pedidos"], dependencies=[Depends(get_usuario_atual)]
 )
 
 
 @router.post("", response_model=PedidoRead, status_code=status.HTTP_201_CREATED)
-def criar_pedido(payload: PedidoCreate, db: Session = Depends(get_db)) -> Pedido:
+def criar_pedido(
+    payload: PedidoCreate,
+    db: Session = Depends(get_db),
+    usuario_atual: Usuario = Depends(get_usuario_atual),
+) -> Pedido:
     try:
-        return pedidos_service.criar_pedido(db, payload)
+        return pedidos_service.criar_pedido(db, payload, usuario=usuario_atual)
     except pedidos_service.ClienteNaoEncontrado as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except (
@@ -66,17 +72,25 @@ def obter_pedido(pedido_id: int, db: Session = Depends(get_db)) -> Pedido:
 
 
 @router.post("/{pedido_id}/confirmar-sinal", response_model=PedidoRead)
-def confirmar_sinal(pedido_id: int, db: Session = Depends(get_db)) -> Pedido:
+def confirmar_sinal(
+    pedido_id: int,
+    db: Session = Depends(get_db),
+    usuario_atual: Usuario = Depends(get_usuario_atual),
+) -> Pedido:
     try:
-        return pedidos_service.confirmar_sinal(db, pedido_id)
+        return pedidos_service.confirmar_sinal(db, pedido_id, usuario=usuario_atual)
     except pedidos_service.PedidoNaoEncontrado as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 @router.post("/{pedido_id}/avancar", response_model=PedidoRead)
-def avancar_pedido(pedido_id: int, db: Session = Depends(get_db)) -> Pedido:
+def avancar_pedido(
+    pedido_id: int,
+    db: Session = Depends(get_db),
+    usuario_atual: Usuario = Depends(get_usuario_atual),
+) -> Pedido:
     try:
-        return pedidos_service.avancar_status(db, pedido_id)
+        return pedidos_service.avancar_status(db, pedido_id, usuario=usuario_atual)
     except pedidos_service.PedidoNaoEncontrado as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except (
@@ -87,9 +101,13 @@ def avancar_pedido(pedido_id: int, db: Session = Depends(get_db)) -> Pedido:
 
 
 @router.post("/{pedido_id}/cancelar", response_model=PedidoRead)
-def cancelar_pedido(pedido_id: int, db: Session = Depends(get_db)) -> Pedido:
+def cancelar_pedido(
+    pedido_id: int,
+    db: Session = Depends(get_db),
+    usuario_atual: Usuario = Depends(get_usuario_atual),
+) -> Pedido:
     try:
-        return pedidos_service.cancelar_pedido(db, pedido_id)
+        return pedidos_service.cancelar_pedido(db, pedido_id, usuario=usuario_atual)
     except pedidos_service.PedidoNaoEncontrado as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except (
