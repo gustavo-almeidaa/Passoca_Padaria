@@ -19,6 +19,24 @@ MENSAGEM_SO_PROPRIETARIA = (
 )
 
 
+def obter_ip_cliente(request: Request) -> str:
+    """IP de origem da requisição — usado pelo limite de tentativas de login
+    (Incremento 17).
+
+    Atrás do proxy do Render, `request.client.host` é o proxy, não o
+    cliente; o IP real vem como 1ª entrada do `X-Forwarded-For`. Em dev
+    local (sem proxy) o header não existe e caímos no `request.client`.
+    Forjar o header em dev é inofensivo (não há atacante); em produção o
+    Render controla esse header.
+    """
+    encaminhado = request.headers.get("x-forwarded-for")
+    if encaminhado:
+        return encaminhado.split(",")[0].strip()
+    if request.client is not None:
+        return request.client.host
+    return "desconhecido"
+
+
 def get_usuario_atual(request: Request, db: Session = Depends(get_db)) -> Usuario:
     usuario_id = request.session.get("usuario_id")
     if usuario_id is None:

@@ -49,6 +49,11 @@ Incrementos recentes:
   CVEs restantes da baseline não têm correção publicada e/ou não são
   alcançáveis no código — justificativa individual em
   `.github/workflows/ci.yml`.
+- **17 — Limite de tentativas no login** (2026-08-27, auditoria A-02):
+  tabela `tentativas_login`; falhas contadas **por IP** numa janela de
+  15 min — de 5 a 9 aplicam atraso progressivo, 10+ retornam `429` sem
+  checar a senha. A conta nunca trava, só o IP (assim um ataque remoto não
+  tranca a proprietária para fora). Lógica em `app/services/rate_limit.py`.
 
 O sistema passou a depender de internet, já que o banco agora é gerenciado
 na nuvem (decisão registrada: funcionar offline não é requisito do MVP).
@@ -147,9 +152,10 @@ uvicorn app.main:app --reload      # sobe a API + frontend em http://127.0.0.1:8
 ```
 
 Isso cria o schema completo (`clientes`, `produtos`, `pedidos`,
-`itens_pedido`, `usuarios`) no banco Postgres do Neon e roda os 128 testes
-automatizados (schema + API + service de pedidos + autenticação — cada
-teste usa um SQLite em memória isolado, não toca no Neon). No primeiro
+`itens_pedido`, `usuarios`, `tentativas_login`) no banco Postgres do Neon e
+roda os 148 testes automatizados (schema + API + service de pedidos +
+autenticação + limite de tentativas — cada teste usa um SQLite em memória
+isolado, não toca no Neon). No primeiro
 boot, se `ADMIN_EMAIL`/`ADMIN_SENHA` estiverem configurados e o banco não
 tiver nenhum usuário, a conta da proprietária é criada automaticamente.
 Com o servidor no ar: o sistema fica em `http://127.0.0.1:8000/` — pede
@@ -231,7 +237,7 @@ login (cookie) — retornam `401` sem ela.
 | Método | Rota | Descrição |
 |---|---|---|
 | `GET` | `/health` | Verificação de saúde da API (não exige login) |
-| `POST` | `/auth/login` | Login (e-mail + senha) — cria a sessão |
+| `POST` | `/auth/login` | Login (e-mail + senha) — cria a sessão. Retorna `429` + `Retry-After` após muitas falhas do mesmo IP (Incremento 17) |
 | `POST` | `/auth/logout` | Encerra a sessão |
 | `GET` | `/auth/me` | Dados do usuário logado (frontend usa pra checar sessão) |
 | `GET` | `/auth/usuarios` | Lista usuários cadastrados — **só proprietária** |
