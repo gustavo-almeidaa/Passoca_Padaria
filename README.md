@@ -43,6 +43,12 @@ Incrementos recentes:
   roda `pytest` + `ruff` + `bandit` + `pip-audit` a cada push/PR (A-05);
   `ruff`/`bandit` configurados em `backend/pyproject.toml` (A-08); tags
   `incremento-01..15` criadas retroativamente (A-06).
+- **16.1 — Bump de dependências vulneráveis** (2026-08-27): `fastapi` para
+  0.121.3 + `starlette` para 0.49.3, corrigindo o ReDoS no parsing do
+  header `Range` do `StaticFiles` (PYSEC-2026-1942) e mais um CVE. Os 7
+  CVEs restantes da baseline não têm correção publicada e/ou não são
+  alcançáveis no código — justificativa individual em
+  `.github/workflows/ci.yml`.
 
 O sistema passou a depender de internet, já que o banco agora é gerenciado
 na nuvem (decisão registrada: funcionar offline não é requisito do MVP).

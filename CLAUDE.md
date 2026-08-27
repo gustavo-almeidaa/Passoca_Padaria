@@ -168,6 +168,11 @@ detalhe — incremental não significa "perguntar toda linha de código".
   - **Incremento 16 (feito):** CI no GitHub Actions rodando `pytest` +
     `ruff` + `bandit` + `pip-audit` a cada push/PR (A-05); ferramental de
     qualidade adotado (A-08); tags retroativas `incremento-01..15` (A-06).
+  - **Incremento 16.1 (feito):** bump `fastapi 0.115.6 → 0.121.3` +
+    `starlette 0.41.3 → 0.49.3`, corrigindo o PYSEC-2026-1942 (ReDoS no
+    `Range` do StaticFiles, exposto) e o PYSEC-2026-1941. Restam 7 CVEs
+    ignorados no CI, cada um com justificativa (sem fix lançado e/ou não
+    alcançável no código) — ver comentário em `.github/workflows/ci.yml`.
 
 ## 3. Visão do negócio
 
@@ -406,14 +411,16 @@ Não escolha estes itens sozinho sem perguntar primeiro, mesmo que pareça
       como secret `RENDER_DEPLOY_HOOK` no GitHub, e então trocar o workflow
       pra disparar o deploy só no fim do CI (com `autoDeploy: false` no
       `render.yaml`). Fica pra um incremento futuro.
-- [ ] Bump de dependências vulneráveis — **em aberto**. O `pip-audit` do
-      Incremento 16 achou 9 CVEs na baseline (7 em `starlette` via
-      `fastapi==0.115.6`, com destaque pro PYSEC-2026-1942: ReDoS no
-      parsing de `Range` do `StaticFiles`, que este sistema usa e está
-      exposto; 1 em `python-dotenv`, 1 em `click`). Estão silenciados por
-      ID no CI (`--ignore-vuln`) até um incremento dedicado subir
-      `fastapi`/`starlette`/`uvicorn` e testar. Ver relatório do
-      Incremento 16.
+- [x] Bump de dependências vulneráveis — **feito no Incremento 16.1**
+      (2026-08-27). `fastapi 0.115.6 → 0.121.3` (puxa `starlette 0.49.3`),
+      corrigindo PYSEC-2026-1942 (ReDoS no `Range` do `StaticFiles`,
+      exposto) e PYSEC-2026-1941. Os outros 7 CVEs da baseline **não têm
+      versão corrigida publicada ainda** (starlette 1.x, python-dotenv
+      1.2.2, click 8.3.3 não existem) e/ou não são alcançáveis no código —
+      seguem `--ignore-vuln` no CI, com justificativa individual no
+      workflow, a revisar a cada bump. `uvicorn`/`pydantic`/`click`/
+      `python-dotenv` não foram mexidos de propósito (bump não resolveria
+      CVE nenhum deles hoje).
 
 ## 12. Glossário
 
