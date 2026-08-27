@@ -7,33 +7,61 @@ negócio só pra checar.
 """
 from __future__ import annotations
 
+import time
+
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
-from app.api.deps import exigir_proprietaria, get_usuario_atual
+from app.api.deps import exigir_proprietaria, get_usuario_atual, obter_ip_cliente
 from app.core.database import get_db
 from app.core.security import hash_senha, verificar_senha
 from app.models.usuario import PerfilUsuario, Usuario
 from app.schemas.usuario import TrocarSenhaRequest, UsuarioCreate, UsuarioLogin, UsuarioRead
+from app.services import rate_limit
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 MENSAGEM_CREDENCIAIS_INVALIDAS = "E-mail ou senha incorretos."
+MENSAGEM_MUITAS_TENTATIVAS = (
+    "Muitas tentativas de login sem sucesso deste dispositivo. Espere alguns "
+    "minutos e tente de novo."
+)
 
 
 @router.post("/login", response_model=UsuarioRead)
 def login(payload: UsuarioLogin, request: Request, db: Session = Depends(get_db)) -> Usuario:
+    # Limite de tentativas por IP (Incremento 17, auditoria A-02). Só o IP é
+    # penalizado — a conta nunca trava (ver app/services/rate_limit.py).
+    ip = obter_ip_cliente(request)
+    avaliacao = rate_limit.avaliar_ip(db, ip)
+    if avaliacao.bloqueado:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=MENSAGEM_MUITAS_TENTATIVAS,
+            headers={"Retry-After": str(avaliacao.retry_after_segundos)},
+        )
+    if avaliacao.atraso_segundos:
+        time.sleep(avaliacao.atraso_segundos)
+
     usuario = db.query(Usuario).filter(Usuario.email == payload.email).first()
+    autenticado = (
+        usuario is not None
+        and usuario.ativo
+        and verificar_senha(payload.senha, usuario.senha_hash)
+    )
+    rate_limit.registrar_tentativa(
+        db, email=payload.email, ip=ip, sucesso=autenticado
+    )
+
     # Mesma mensagem genérica pra e-mail inexistente e senha errada — não dar
     # pista de qual dos dois está errado (evita enumerar e-mails válidos).
-    if usuario is None or not usuario.ativo or not verificar_senha(
-        payload.senha, usuario.senha_hash
-    ):
+    if not autenticado:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=MENSAGEM_CREDENCIAIS_INVALIDAS,
         )
 
+    db.refresh(usuario)  # registrar_tentativa commitou e expirou o objeto
     request.session.clear()
     request.session["usuario_id"] = usuario.id
     return usuario

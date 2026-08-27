@@ -173,6 +173,11 @@ detalhe — incremental não significa "perguntar toda linha de código".
     `Range` do StaticFiles, exposto) e o PYSEC-2026-1941. Restam 7 CVEs
     ignorados no CI, cada um com justificativa (sem fix lançado e/ou não
     alcançável no código) — ver comentário em `.github/workflows/ci.yml`.
+  - **Incremento 17 (feito):** limite de tentativas no login (A-02).
+    Tabela `tentativas_login`; contagem de falhas **por IP** (a conta
+    nunca trava — decisão do usuário); 5–9 falhas na janela de 15 min =
+    atraso progressivo, 10+ = `429` sem checar a senha. Lógica em
+    `app/services/rate_limit.py`. **A-02 sai da condição de bloqueio.**
 
 ## 3. Visão do negócio
 
@@ -253,8 +258,14 @@ implementar, não são RF confirmados):**
   Decisão tomada ao implementar (o pedido original dizia "excluir"), não
   confirmada com o usuário antes — documentando aqui pra transparência.
   Não existe tela de reativar ainda (só via acesso direto ao banco).
-- Recuperação de senha (esqueci minha senha, sem estar logado) e limite de
-  tentativas de login (brute-force) — ainda não existem.
+- ~~Limite de tentativas de login (brute-force)~~ — **feito em 2026-08-27
+  (Incremento 17, auditoria A-02)**: contagem de falhas por IP numa janela
+  de 15 min; 5–9 falhas geram atraso progressivo, 10+ retornam `429`. A
+  **conta nunca trava** — só o IP (decisão do usuário: um ataque remoto não
+  pode trancar a proprietária para fora). Ver `app/services/rate_limit.py`.
+- Recuperação de senha (esqueci minha senha, sem estar logado) — ainda não
+  existe. Continua backlog: hoje só a proprietária reseta senha, e sem
+  fluxo de e-mail.
 
 ## 6. Requisitos não funcionais (RNF)
 

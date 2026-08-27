@@ -1,6 +1,10 @@
-"""Testes de integração da autenticação — Incremento 12."""
+"""Testes de integração da autenticação — Incrementos 12 e 17."""
+import pytest
+
 from app.core.security import hash_senha
+from app.models.tentativa_login import TentativaLogin
 from app.models.usuario import PerfilUsuario, Usuario
+from app.services import rate_limit
 
 
 def _criar_usuario(
@@ -65,6 +69,103 @@ class TestLogin:
         )
 
         assert resp.status_code == 401
+
+
+class TestLimiteDeTentativas:
+    """Incremento 17 / auditoria A-02 — limite por IP, conta nunca trava."""
+
+    @pytest.fixture(autouse=True)
+    def _sem_sleep_real(self, monkeypatch):
+        """Não espera de verdade nos testes; guarda os atrasos pedidos."""
+        self.atrasos = []
+        monkeypatch.setattr(
+            "app.api.auth.time.sleep", lambda s: self.atrasos.append(s)
+        )
+
+    def _errar_login(self, client_anonimo, vezes, ip="203.0.113.7"):
+        for _ in range(vezes):
+            client_anonimo.post(
+                "/auth/login",
+                json={"email": "dona@passoca.com", "senha": "errada"},
+                headers={"X-Forwarded-For": ip},
+            )
+
+    def test_poucas_falhas_nao_penalizam(self, client_anonimo, db_session):
+        _criar_usuario(db_session, email="dona@passoca.com", senha="senha-valida-123")
+        self._errar_login(client_anonimo, rate_limit.LIMIAR_ATRASO - 1)
+
+        assert self.atrasos == []
+
+    def test_a_partir_do_limiar_aplica_atraso(self, client_anonimo, db_session):
+        _criar_usuario(db_session, email="dona@passoca.com", senha="senha-valida-123")
+        self._errar_login(client_anonimo, rate_limit.LIMIAR_ATRASO + 1)
+
+        assert self.atrasos  # pelo menos um atraso foi aplicado
+        assert self.atrasos[0] == rate_limit.ATRASO_BASE_SEGUNDOS
+
+    def test_login_correto_ainda_passa_na_faixa_de_atraso(self, client_anonimo, db_session):
+        _criar_usuario(db_session, email="dona@passoca.com", senha="senha-valida-123")
+        self._errar_login(client_anonimo, rate_limit.LIMIAR_ATRASO)
+
+        resp = client_anonimo.post(
+            "/auth/login",
+            json={"email": "dona@passoca.com", "senha": "senha-valida-123"},
+            headers={"X-Forwarded-For": "203.0.113.7"},
+        )
+
+        assert resp.status_code == 200
+
+    def test_bloqueia_com_429_e_retry_after(self, client_anonimo, db_session):
+        _criar_usuario(db_session, email="dona@passoca.com", senha="senha-valida-123")
+        self._errar_login(client_anonimo, rate_limit.LIMIAR_BLOQUEIO)
+
+        # Mesmo com a senha certa: o IP está bloqueado, nem chega a checar.
+        resp = client_anonimo.post(
+            "/auth/login",
+            json={"email": "dona@passoca.com", "senha": "senha-valida-123"},
+            headers={"X-Forwarded-For": "203.0.113.7"},
+        )
+
+        assert resp.status_code == 429
+        assert int(resp.headers["retry-after"]) > 0
+
+    def test_bloqueio_e_por_ip_nao_por_conta(self, client_anonimo, db_session):
+        _criar_usuario(db_session, email="dona@passoca.com", senha="senha-valida-123")
+        self._errar_login(client_anonimo, rate_limit.LIMIAR_BLOQUEIO, ip="203.0.113.7")
+
+        # Outro dispositivo (outro IP), mesma conta: passa.
+        resp = client_anonimo.post(
+            "/auth/login",
+            json={"email": "dona@passoca.com", "senha": "senha-valida-123"},
+            headers={"X-Forwarded-For": "198.51.100.2"},
+        )
+
+        assert resp.status_code == 200
+
+    def test_mensagem_generica_preservada(self, client_anonimo, db_session):
+        _criar_usuario(db_session, email="dona@passoca.com", senha="senha-valida-123")
+
+        resp = client_anonimo.post(
+            "/auth/login",
+            json={"email": "dona@passoca.com", "senha": "errada"},
+            headers={"X-Forwarded-For": "203.0.113.7"},
+        )
+
+        assert resp.status_code == 401
+        assert resp.json()["detail"] == "E-mail ou senha incorretos."
+
+    def test_login_registra_tentativa(self, client_anonimo, db_session):
+        _criar_usuario(db_session, email="dona@passoca.com", senha="senha-valida-123")
+
+        client_anonimo.post(
+            "/auth/login",
+            json={"email": "dona@passoca.com", "senha": "senha-valida-123"},
+            headers={"X-Forwarded-For": "203.0.113.7"},
+        )
+
+        registro = db_session.query(TentativaLogin).one()
+        assert registro.sucesso is True
+        assert registro.ip == "203.0.113.7"
 
 
 class TestMe:
