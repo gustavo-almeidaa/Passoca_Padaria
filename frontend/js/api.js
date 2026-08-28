@@ -106,6 +106,8 @@ const api = {
     apiFetch(`/produtos/${id}`, { method: "PUT", body: JSON.stringify(dados) }),
   criarPedido: (dados) =>
     apiFetch("/pedidos", { method: "POST", body: JSON.stringify(dados) }),
+  editarPedido: (id, dados) =>
+    apiFetch(`/pedidos/${id}`, { method: "PUT", body: JSON.stringify(dados) }),
   listarPedidos: (opcoes = {}) => {
     const params = new URLSearchParams();
     if (opcoes.data_inicio) params.set("data_inicio", opcoes.data_inicio);

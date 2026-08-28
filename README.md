@@ -84,8 +84,11 @@ Incrementos recentes:
 - **23 — Editar pedido** (2026-08-27): `PUT /pedidos/{id}` edita itens e/ou
   data de entrega de um pedido ainda em `recebido` (não muda o cliente).
   Revalida RN01/RN05 na nova data; reseta o sinal se a composição de itens
-  personalizáveis mudar; itens antigos mantêm o preço travado. Backend
-  só — o frontend fica pro Incremento 23.1.
+  personalizáveis mudar; itens antigos mantêm o preço travado.
+- **23.1 — Frontend da edição** (2026-08-27): botão "Editar" no ticket
+  (só `recebido`, só proprietária/atendente) abre um painel inline com
+  data/hora + itens. Um item que já estava no pedido segue válido mesmo
+  se o produto saiu de linha depois.
 
 O sistema passou a depender de internet, já que o banco agora é gerenciado
 na nuvem (decisão registrada: funcionar offline não é requisito do MVP).
@@ -190,7 +193,7 @@ uvicorn app.main:app --reload      # sobe a API + frontend em http://127.0.0.1:8
 
 Isso cria o schema completo (`clientes`, `produtos`, `pedidos`,
 `itens_pedido`, `usuarios`, `tentativas_login`, `eventos_auditoria`) no
-banco Postgres do Neon e roda os 204 testes automatizados (schema + API +
+banco Postgres do Neon e roda os 205 testes automatizados (schema + API +
 services + autenticação + limite de tentativas + trilha de auditoria +
 matriz de permissão + desempenho + edição de pedido — cada teste usa um
 SQLite em memória isolado, não toca no Neon). No primeiro

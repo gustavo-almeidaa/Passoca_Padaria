@@ -399,6 +399,17 @@ button.danger:disabled {
 .ticket__acoes { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 .ticket__feedback { margin-top: 10px; }
 
+/* Painel de edição de pedido (Incremento 23.1) — aberto dentro do ticket. */
+.ticket__edicao {
+  margin-top: 12px;
+  padding: 14px;
+  border: 1.5px dashed var(--crust);
+  border-radius: 8px;
+  background: var(--cream);
+}
+.ticket__edicao .edit-itens { margin: 10px 0; }
+.ticket__edicao .total { margin-top: 10px; }
+
 .empty {
   text-align: center;
   color: var(--ink-soft);

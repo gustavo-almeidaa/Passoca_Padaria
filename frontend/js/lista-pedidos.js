@@ -36,6 +36,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
   let clientesPorId = new Map();
   let produtosPorId = new Map();
+  let pedidosPorId = new Map();
+
+  const DIA_MS = 24 * 60 * 60 * 1000;
 
   // Padrão: semana a partir de hoje (decisão do usuário, 2026-08-25) — só
   // definido uma vez ao carregar a página, pra não sobrescrever um filtro
@@ -97,6 +100,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function renderPedidos(pedidos) {
+    pedidosPorId = new Map(pedidos.map((p) => [p.id, p]));
     if (pedidos.length === 0) {
       listaPedidos.innerHTML = '<p class="empty">Nenhum pedido nesse período.</p>';
       return;
@@ -170,6 +174,14 @@ document.addEventListener("DOMContentLoaded", () => {
       );
     }
 
+    // Incremento 23.1: editar só faz sentido enquanto o pedido está em
+    // `recebido` (o backend rejeita depois disso) e é ação de balcão.
+    if (!ehPadeiro && pedido.status === "recebido") {
+      botoes.push(
+        `<button type="button" class="secondary" data-acao="editar" data-pedido-id="${pedido.id}">Editar</button>`
+      );
+    }
+
     const proximoLabel = PROXIMO_STATUS_LABEL[pedido.status];
     if (proximoLabel) {
       const bloqueadoPorSinal =
@@ -199,6 +211,11 @@ document.addEventListener("DOMContentLoaded", () => {
     const ticketFeedback = ticket.querySelector(".ticket__feedback");
     limparFeedback(ticketFeedback);
 
+    if (acao === "editar") {
+      abrirEdicao(pedidoId, ticket);
+      return;
+    }
+
     if (acao === "cancelar") {
       const confirmado = window.confirm("Cancelar este pedido? Essa ação não pode ser desfeita.");
       if (!confirmado) return;
@@ -211,6 +228,182 @@ document.addEventListener("DOMContentLoaded", () => {
       await buscarPedidos();
     } catch (erro) {
       mostrarFeedback(ticketFeedback, erro.message, "erro");
+    }
+  }
+
+  // --- Edição de pedido (Incremento 23.1) --------------------------------
+  //
+  // Painel montado sob demanda dentro do próprio ticket. Espelha as
+  // validações de RN01/RN05 e do teto de quantidade só para feedback
+  // rápido — o backend (PUT /pedidos/{id}) é a fonte da verdade.
+
+  function opcoesProdutoEdicao(selecionadoId) {
+    // Produto novo tem que estar ativo; um que já está no pedido pode
+    // continuar mesmo desativado depois (o backend permite).
+    const lista = [...produtosPorId.values()].filter(
+      (p) => p.ativo || String(p.id) === String(selecionadoId)
+    );
+    const placeholder = `<option value="" disabled${
+      selecionadoId ? "" : " selected"
+    }>Selecione o produto</option>`;
+    return (
+      placeholder +
+      lista
+        .map((p) => {
+          const sel = String(p.id) === String(selecionadoId) ? " selected" : "";
+          const rotulo = p.ativo ? "" : " (fora de linha)";
+          return `<option value="${p.id}" data-preco="${p.preco}"${sel}>${escapeHtml(
+            p.nome
+          )}${rotulo} — ${formatarMoeda(p.preco)}</option>`;
+        })
+        .join("")
+    );
+  }
+
+  function linhaItemEdicao(produtoId, quantidade) {
+    const linha = document.createElement("div");
+    linha.className = "item-pedido-row";
+    linha.innerHTML = `
+      <select class="item-produto">${opcoesProdutoEdicao(produtoId)}</select>
+      <input class="item-quantidade" type="number" min="1" max="999" step="1" value="${quantidade}" aria-label="Quantidade">
+      <span class="item-subtotal">${formatarMoeda(0)}</span>
+      <button type="button" class="item-remover" aria-label="Remover item">✕</button>`;
+    return linha;
+  }
+
+  function abrirEdicao(pedidoId, ticket) {
+    if (ticket.querySelector(".ticket__edicao")) return; // já aberto
+    const pedido = pedidosPorId.get(pedidoId);
+    if (!pedido) return;
+
+    const hoje = new Date().toISOString().slice(0, 10);
+    const max = new Date(Date.now() + 90 * DIA_MS).toISOString().slice(0, 10);
+
+    const painel = document.createElement("div");
+    painel.className = "ticket__edicao";
+    painel.innerHTML = `
+      <div class="row">
+        <div>
+          <label>Nova data de entrega</label>
+          <input type="date" class="edit-data" value="${pedido.data_entrega}" min="${hoje}" max="${max}">
+        </div>
+        <div>
+          <label>Novo horário</label>
+          <input type="time" class="edit-hora" value="${pedido.hora_entrega.slice(0, 5)}">
+        </div>
+      </div>
+      <label>Itens do pedido</label>
+      <div class="edit-itens"></div>
+      <button type="button" class="secondary" data-add-item>+ Adicionar item</button>
+      <p class="total">Total: <b class="edit-total">${formatarMoeda(0)}</b></p>
+      <div class="ticket__acoes">
+        <button type="button" class="action action--small" data-salvar-edicao>Salvar alterações</button>
+        <button type="button" class="secondary" data-cancelar-edicao>Cancelar edição</button>
+      </div>`;
+
+    const acoes = ticket.querySelector(".ticket__acoes");
+    acoes.hidden = true;
+    acoes.after(painel);
+
+    const itensEl = painel.querySelector(".edit-itens");
+    pedido.itens.forEach((item) =>
+      itensEl.appendChild(linhaItemEdicao(item.produto_id, item.quantidade))
+    );
+
+    painel.addEventListener("input", () => recalcularEdicao(painel));
+    painel.addEventListener("change", () => recalcularEdicao(painel));
+    painel.querySelector("[data-add-item]").addEventListener("click", () => {
+      itensEl.appendChild(linhaItemEdicao("", 1));
+      recalcularEdicao(painel);
+    });
+    itensEl.addEventListener("click", (evento) => {
+      if (evento.target.classList.contains("item-remover") && itensEl.children.length > 1) {
+        evento.target.closest(".item-pedido-row").remove();
+        recalcularEdicao(painel);
+      }
+    });
+    painel.querySelector("[data-cancelar-edicao]").addEventListener("click", () => {
+      painel.remove();
+      acoes.hidden = false;
+    });
+    painel
+      .querySelector("[data-salvar-edicao]")
+      .addEventListener("click", () => salvarEdicao(pedidoId, painel, ticket));
+
+    recalcularEdicao(painel);
+  }
+
+  function recalcularEdicao(painel) {
+    let total = 0;
+    painel.querySelectorAll(".item-pedido-row").forEach((linha) => {
+      const opcao = linha.querySelector(".item-produto").selectedOptions[0];
+      const qtd = Math.max(0, Number(linha.querySelector(".item-quantidade").value) || 0);
+      const preco = opcao ? Number(opcao.dataset.preco || 0) : 0;
+      const subtotal = preco * qtd;
+      linha.querySelector(".item-subtotal").textContent = formatarMoeda(subtotal);
+      total += subtotal;
+    });
+    painel.querySelector(".edit-total").textContent = formatarMoeda(total);
+  }
+
+  function coletarItensEdicao(painel) {
+    const itens = [];
+    for (const linha of painel.querySelectorAll(".item-pedido-row")) {
+      const produtoId = linha.querySelector(".item-produto").value;
+      const quantidade = Number(linha.querySelector(".item-quantidade").value);
+      if (!produtoId) return { erro: "Selecione o produto em todos os itens." };
+      if (!Number.isInteger(quantidade) || quantidade <= 0) {
+        return { erro: "A quantidade de cada item precisa ser um inteiro maior que zero." };
+      }
+      if (quantidade > 999) return { erro: "A quantidade de cada item não pode passar de 999." };
+      itens.push({ produto_id: Number(produtoId), quantidade });
+    }
+    return { itens };
+  }
+
+  async function salvarEdicao(pedidoId, painel, ticket) {
+    const ticketFeedback = ticket.querySelector(".ticket__feedback");
+    limparFeedback(ticketFeedback);
+
+    const dataEntrega = painel.querySelector(".edit-data").value;
+    const horaEntrega = painel.querySelector(".edit-hora").value;
+    if (!dataEntrega || !horaEntrega) {
+      mostrarFeedback(ticketFeedback, "Informe a data e o horário de entrega.", "erro");
+      return;
+    }
+
+    const momento = new Date(`${dataEntrega}T${horaEntrega}`);
+    if (Number.isNaN(momento.getTime()) || momento < new Date(Date.now() + DIA_MS)) {
+      mostrarFeedback(
+        ticketFeedback,
+        "Escolha uma data e horário com pelo menos 24h de antecedência.",
+        "erro"
+      );
+      return;
+    }
+    if (momento > new Date(Date.now() + 90 * DIA_MS)) {
+      mostrarFeedback(ticketFeedback, "Escolha uma data de entrega em até 90 dias.", "erro");
+      return;
+    }
+
+    const { itens, erro } = coletarItensEdicao(painel);
+    if (erro) {
+      mostrarFeedback(ticketFeedback, erro, "erro");
+      return;
+    }
+
+    const botao = painel.querySelector("[data-salvar-edicao]");
+    definirCarregando(botao, true, "Salvando...");
+    try {
+      await api.editarPedido(pedidoId, {
+        data_entrega: dataEntrega,
+        hora_entrega: horaEntrega,
+        itens,
+      });
+      await buscarPedidos();
+    } catch (erroApi) {
+      mostrarFeedback(ticketFeedback, erroApi.message, "erro");
+      definirCarregando(botao, false);
     }
   }
 
