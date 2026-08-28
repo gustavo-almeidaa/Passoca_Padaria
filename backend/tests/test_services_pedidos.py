@@ -444,3 +444,30 @@ class TestListarPedidosRF07:
             pedidos_service.listar_pedidos(
                 db_session, date(2026, 1, 10), date(2026, 1, 5)
             )
+
+    def test_listar_nao_faz_n_mais_1_ao_carregar_itens(self, db_session):
+        """Incremento 22 (A-07): a listagem carrega os itens com selectinload
+        — sem isso, cada pedido do dia dispara uma query separada (N+1), o
+        que contra o Postgres do Neon vira segundos."""
+        from sqlalchemy import event
+
+        for _ in range(5):
+            _criar_pedido_direto(db_session, entrega=datetime(2026, 1, 10, 12, 0))
+
+        engine = db_session.get_bind()
+        selects: list[str] = []
+
+        def _contar(conn, cursor, statement, params, context, executemany):
+            if statement.lstrip().upper().startswith("SELECT"):
+                selects.append(statement)
+
+        event.listen(engine, "before_cursor_execute", _contar)
+        try:
+            resultado = pedidos_service.listar_pedidos(db_session, date(2026, 1, 10))
+            _ = [list(pedido.itens) for pedido in resultado]  # força serialização
+        finally:
+            event.remove(engine, "before_cursor_execute", _contar)
+
+        assert len(resultado) == 5
+        # 1 query pros pedidos + 1 pros itens. Sem selectinload seriam 6.
+        assert len(selects) <= 2

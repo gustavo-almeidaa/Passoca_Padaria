@@ -165,9 +165,10 @@ detalhe — incremental não significa "perguntar toda linha de código".
   ação da auditoria, por ordem de severidade. **Condição de bloqueio
   registrada: não comercializar para terceiros com A-01, A-02 ou A-03 em
   aberto, nem com L-01 (modelo de isolamento multi-tenant) indefinido.**
-  Status em 2026-08-27: **A-01, A-02, A-03 e A-04 fechados** (Incrementos
-  17, 18, 19, 21). Restam da auditoria: A-07 (desempenho + plano de
-  hospedagem) e as lacunas SaaS L-01..L-08.
+  Status em 2026-08-27: **A-01..A-04 e A-07 fechados** (Incrementos 17-22).
+  Todos os achados da auditoria resolvidos; restam só as lacunas de
+  prontidão SaaS L-01..L-08 (que só viram requisito se a decisão de
+  comercializar for tomada).
   - **Incremento 16 (feito):** CI no GitHub Actions rodando `pytest` +
     `ruff` + `bandit` + `pip-audit` a cada push/PR (A-05); ferramental de
     qualidade adotado (A-08); tags retroativas `incremento-01..15` (A-06).
@@ -212,6 +213,16 @@ detalhe — incremental não significa "perguntar toda linha de código".
     suíte inteira contra `postgres:16`) e `migracoes-postgres` (round-trip
     `upgrade head → downgrade base → upgrade head` — as migrations, que
     nunca tinham sido executadas de verdade, só validadas offline).
+  - **Incremento 22 (feito):** medição de desempenho (A-07). Middleware
+    `medir_tempo_de_resposta` (header `X-Response-Time` em toda resposta,
+    `WARNING` no log acima de 500ms); script de carga em Python puro
+    (`backend/loadtest/carga.py`); baseline medida e registrada em
+    `docs/desempenho.md`. Corrigido N+1 em `GET /pedidos` (selectinload
+    nos itens, com teste de regressão). p95 dos endpoints ~164ms local;
+    `POST /auth/login` (~400ms, bcrypt) é o mais pesado. **Recomendação
+    registrada: plano Starter do Render antes de uso comercial** (o free
+    "dorme" — cold start de 30-60s incompatível com abertura às 5h) — 1
+    linha no `render.yaml`, decisão do dono + cliente.
 
 ## 3. Visão do negócio
 
@@ -322,7 +333,7 @@ engenharia atual — use a coluna direita como meta de implementação.
 | ID | Intenção original | Meta de produção |
 |---|---|---|
 | RNF01 | Interface simples para quem não tem prática com informática | UI com poucos cliques por tarefa, mensagens de erro em português claro, sem jargão técnico |
-| RNF02 | Resposta em menos de 2s | Endpoints de API com p95 < 500ms em uso normal (poucos usuários simultâneos) |
+| RNF02 | Resposta em menos de 2s | Endpoints de API com p95 < 500ms em uso normal (poucos usuários simultâneos). **Medido no Incremento 22** (A-07): p95 ~164ms local (SQLite); ver `docs/desempenho.md`. Ressalva: `POST /auth/login` fica ~400ms (bcrypt) e o cold start do plano free do Render domina o primeiro acesso do dia — daí a recomendação de migrar pro plano Starter antes de uso comercial. |
 | RNF03 | Dados salvos com segurança | Persistência em banco relacional com backup; nunca perder um pedido confirmado — **atendido** desde 2026-08-25 via PostgreSQL gerenciado (Neon), que inclui backup/point-in-time restore |
 | RNF04 | Rodar em hardware comum | Rodar em navegador comum (não exigir app nativo instalado); mobile-friendly é desejável, pois atendente pode usar celular |
 
@@ -454,6 +465,13 @@ Não escolha estes itens sozinho sem perguntar primeiro, mesmo que pareça
       a conta/Blueprint no painel do Render (ação de conta, feita pelo
       dono do projeto) e preencher os segredos por lá. Ver README.md,
       seção "Deploy (Render)".
+- [ ] Plano do Render para uso comercial — **em aberto, decisão do dono +
+      cliente**. O Incremento 22 (A-07) recomenda o plano **Starter**
+      (~US$ 7/mês, sempre ativo) antes de atender cliente pagante: o free
+      suspende após ~15 min e o primeiro acesso do dia (padaria abre às
+      5h) pega um cold start de 30-60s, que a auditoria classificou como
+      incompatível com balcão. Mudança: 1 linha no `render.yaml`
+      (`plan: free` → `plan: starter`). Ver `docs/desempenho.md`.
 - [x] Necessidade de funcionar offline — **não é requisito do MVP**,
       decidido em 2026-08-25 junto com a escolha do banco gerenciado
       (que já pressupõe internet disponível).

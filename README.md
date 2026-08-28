@@ -75,6 +75,12 @@ Incrementos recentes:
   a suíte roda contra `TEST_DATABASE_URL` quando setada (Postgres no CI),
   senão SQLite. Dois jobs de CI bloqueantes: a suíte inteira contra
   `postgres:16` e o round-trip das migrations no Postgres.
+- **22 — Medição de desempenho** (2026-08-27, auditoria A-07): header
+  `X-Response-Time` em toda resposta + log de requisição lenta (>500ms);
+  script de carga `backend/loadtest/carga.py`; baseline em
+  `docs/desempenho.md` (p95 dos endpoints ~164ms local). Corrigido N+1 em
+  `GET /pedidos`. Recomendação: plano Starter do Render antes de uso
+  comercial (o free "dorme").
 
 O sistema passou a depender de internet, já que o banco agora é gerenciado
 na nuvem (decisão registrada: funcionar offline não é requisito do MVP).
@@ -95,6 +101,7 @@ Passoca_Padaria/
 │   │   └── core/         # config (settings), conexão com banco e security.py (hash de senha)
 │   ├── migrations/       # Alembic — histórico de mudanças de schema
 │   ├── tests/            # pytest
+│   ├── loadtest/         # carga.py — teste de carga do balcão (A-07)
 │   ├── .env.example      # modelo de variáveis de ambiente
 │   ├── alembic.ini
 │   ├── pytest.ini
@@ -110,7 +117,9 @@ Passoca_Padaria/
 │                           # + gate de permissão por perfil), cadastro-cliente.js,
 │                           # cadastro-produto.js, novo-pedido.js, lista-pedidos.js,
 │                           # usuarios.js, auditoria.js
-├── docs/referencia-prototipo/  # protótipo HTML original, só como referência de UX
+├── docs/
+│   ├── desempenho.md            # medição de desempenho + recomendação de plano (A-07)
+│   └── referencia-prototipo/    # protótipo HTML original, só como referência de UX
 └── CLAUDE.md
 ```
 
@@ -176,10 +185,10 @@ uvicorn app.main:app --reload      # sobe a API + frontend em http://127.0.0.1:8
 
 Isso cria o schema completo (`clientes`, `produtos`, `pedidos`,
 `itens_pedido`, `usuarios`, `tentativas_login`, `eventos_auditoria`) no
-banco Postgres do Neon e roda os 185 testes automatizados (schema + API +
+banco Postgres do Neon e roda os 187 testes automatizados (schema + API +
 services + autenticação + limite de tentativas + trilha de auditoria +
-matriz de permissão — cada teste usa um SQLite em memória isolado, não
-toca no Neon). No primeiro
+matriz de permissão + desempenho — cada teste usa um SQLite em memória
+isolado, não toca no Neon). No primeiro
 boot, se `ADMIN_EMAIL`/`ADMIN_SENHA` estiverem configurados e o banco não
 tiver nenhum usuário, a conta da proprietária é criada automaticamente.
 Com o servidor no ar: o sistema fica em `http://127.0.0.1:8000/` — pede
@@ -255,10 +264,12 @@ cada um faz a sua):
    fluxo já usado até aqui).
 
 Plano free do Render "dorme" após ~15min sem acesso — o primeiro acesso
-depois disso demora uns 30-60s pra responder (decisão registrada, aceitável
-pra fase inicial). Dá pra migrar pro plano pago (Starter, sempre ativo)
-depois só trocando `plan: free` para `plan: starter` no `render.yaml`, sem
-mexer em mais nada.
+depois disso demora uns 30-60s pra responder (aceitável só na fase de
+desenvolvimento). Dá pra migrar pro plano pago (Starter, sempre ativo)
+trocando `plan: free` para `plan: starter` no `render.yaml`, sem mexer em
+mais nada. **O Incremento 22 (auditoria A-07) recomenda essa migração
+antes de qualquer uso comercial** — uma padaria abre às 5h e o primeiro
+pedido do dia pegaria o cold start. Ver [`docs/desempenho.md`](docs/desempenho.md).
 
 ## Endpoints disponíveis
 

@@ -8,6 +8,7 @@ o sistema na internet, diferente do cenário original "só rede interna".
 from __future__ import annotations
 
 import logging
+import time
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -26,6 +27,10 @@ from app.models.usuario import PerfilUsuario, Usuario
 FRONTEND_DIR = Path(__file__).resolve().parent.parent.parent / "frontend"
 
 logger = logging.getLogger("passoca")
+
+# RNF de produção (CLAUDE.md, seção 6): p95 dos endpoints < 500ms. Acima
+# disto, a requisição vira WARNING no log (Incremento 22, auditoria A-07).
+LIMITE_LENTO_MS = 500
 
 # Não é um segredo: é o valor-sentinela de desenvolvimento. A função
 # _validar_configuracao_producao() abaixo RECUSA subir com ENVIRONMENT=
@@ -113,6 +118,36 @@ app.include_router(clientes.router)
 app.include_router(produtos.router)
 app.include_router(pedidos.router)
 app.include_router(auditoria.router)
+
+
+@app.middleware("http")
+async def medir_tempo_de_resposta(request: Request, call_next):
+    """Instrumentação de desempenho — Incremento 22 (auditoria A-07).
+
+    Mede cada requisição, expõe o número no header `X-Response-Time` e, se
+    passar de `LIMITE_LENTO_MS`, registra em WARNING (aparece no log do
+    Render sem ninguém precisar caçar). Requisição rápida não polui o log.
+    Custo: um relógio antes e outro depois.
+
+    Definido depois do middleware de cache de propósito — o Starlette
+    empilha o último como o mais externo, então este mede o tempo total,
+    incluindo os outros middlewares.
+    """
+    inicio = time.perf_counter()
+    resposta = await call_next(request)
+    decorrido_ms = (time.perf_counter() - inicio) * 1000
+    resposta.headers["X-Response-Time"] = f"{decorrido_ms:.0f}ms"
+
+    if decorrido_ms >= LIMITE_LENTO_MS:
+        logger.warning(
+            "LENTO: %s %s -> %s em %.0fms (alvo < %dms)",
+            request.method,
+            request.url.path,
+            resposta.status_code,
+            decorrido_ms,
+            LIMITE_LENTO_MS,
+        )
+    return resposta
 
 
 @app.middleware("http")
