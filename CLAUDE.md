@@ -313,7 +313,13 @@ implementar, não são RF confirmados):**
   se o produto foi desativado depois — senão não dava pra só remarcar a
   data; (2) `ui.js::mostrarFeedback` não apaga mais a classe do elemento
   de feedback (bug latente: quebrava o 2º erro seguido no mesmo ticket).
-- Histórico de pedidos por cliente.
+- ~~Histórico de pedidos por cliente~~ — **feito em 2026-08-28 (Incremento
+  24)**. `GET /clientes/{id}/pedidos` (leitura, qualquer perfil) lista
+  todos os pedidos do cliente — inclusive cancelados — ordenados por data
+  de entrega decrescente. Frontend: botão "pedidos" em cada cliente da
+  aba Clientes abre um painel com o histórico + resumo (nº de pedidos e
+  total já encomendado, contando só os **não** cancelados — decisão do
+  usuário).
 - ~~Trilha de auditoria de operações sensíveis~~ — **feito em 2026-08-27
   (Incremento 18, auditoria A-01)**: tabela `eventos_auditoria` registra
   autor + estado antes/depois de toda operação que muda estado de pedido,

@@ -94,6 +94,7 @@ const api = {
   listarClientes: () => apiFetch("/clientes"),
   criarCliente: (dados) =>
     apiFetch("/clientes", { method: "POST", body: JSON.stringify(dados) }),
+  historicoPedidosCliente: (id) => apiFetch(`/clientes/${id}/pedidos`),
   listarProdutos: (opcoes = {}) => {
     const params = new URLSearchParams();
     if (opcoes.ativo !== undefined) params.set("ativo", opcoes.ativo);

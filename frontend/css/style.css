@@ -429,8 +429,27 @@ button.danger:disabled {
   padding: 6px 14px;
   border-radius: 999px;
   font-size: 0.88rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 .chip b { color: var(--crust); }
+.chip .link-button { font-size: 0.78rem; }
+
+/* Histórico de pedidos por cliente (Incremento 24). */
+#historico-cliente {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1.5px dashed var(--border);
+}
+#historico-cliente[hidden] { display: none; }
+.historico__topo {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+.historico__topo b { color: var(--crust); font-family: 'Kalam', cursive; font-size: 1.15rem; }
 
 .produto-list { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
 .produto-item {
