@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from datetime import date, datetime, timedelta
 
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.models.cliente import Cliente
 from app.models.item_pedido import ItemPedido
@@ -313,8 +313,13 @@ def listar_pedidos(
             "A data final do período não pode ser anterior à data inicial."
         )
 
+    # selectinload nos itens (Incremento 22, auditoria A-07): sem isto, cada
+    # pedido da lista dispara uma query separada pra carregar `.itens` na
+    # serialização (N+1). Contra o Postgres do Neon, com o dia cheio, isso
+    # vira segundos. Com selectinload são 2 queries no total.
     return (
         db.query(Pedido)
+        .options(selectinload(Pedido.itens))
         .filter(Pedido.data_entrega >= data_inicio, Pedido.data_entrega <= data_fim)
         .order_by(Pedido.data_entrega, Pedido.hora_entrega)
         .all()
