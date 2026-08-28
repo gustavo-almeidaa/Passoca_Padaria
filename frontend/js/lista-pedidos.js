@@ -153,7 +153,18 @@ document.addEventListener("DOMContentLoaded", () => {
   function montarAcoes(pedido, temPersonalizavel) {
     const botoes = [];
 
-    if (pedido.status === "recebido" && temPersonalizavel && !pedido.sinal_confirmado) {
+    // Incremento 20 (A-03): o padeiro só avança status de produção —
+    // confirmar sinal e cancelar são de balcão (proprietária/atendente).
+    // O backend barra com 403 de qualquer forma; aqui é só não oferecer.
+    const ehPadeiro =
+      window.usuarioAtual && window.usuarioAtual.perfil === "padeiro";
+
+    if (
+      !ehPadeiro &&
+      pedido.status === "recebido" &&
+      temPersonalizavel &&
+      !pedido.sinal_confirmado
+    ) {
       botoes.push(
         `<button type="button" class="secondary" data-acao="confirmar-sinal" data-pedido-id="${pedido.id}">Confirmar sinal</button>`
       );
@@ -170,7 +181,7 @@ document.addEventListener("DOMContentLoaded", () => {
       );
     }
 
-    if (STATUS_CANCELAVEIS.has(pedido.status)) {
+    if (!ehPadeiro && STATUS_CANCELAVEIS.has(pedido.status)) {
       const momentoEntrega = new Date(`${pedido.data_entrega}T${pedido.hora_entrega}`);
       const janelaFechada = momentoEntrega.getTime() - Date.now() < JANELA_CANCELAMENTO_MS;
       botoes.push(

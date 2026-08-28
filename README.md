@@ -65,7 +65,12 @@ Incrementos recentes:
   = leitura + avançar status de produção, nada mais. Atendente = tudo de
   balcão (cliente, produto inclusive editar, pedido inclusive cancelar).
   Proprietária = tudo. O gate no frontend (esconder botões) fica pro
-  Incremento 19.1.
+  Incremento 20.
+- **20 — Frontend da auditoria e da permissão** (2026-08-27): aba
+  **Auditoria** (só proprietária) lê `GET /auditoria` com filtro por
+  tipo/período; o `auth.js` esconde do padeiro a aba "Novo Pedido" e os
+  formulários de cadastro, e o `lista-pedidos.js` esconde dele os botões
+  "Confirmar sinal"/"Cancelar". Fecha 18.1 e 19.1.
 
 O sistema passou a depender de internet, já que o banco agora é gerenciado
 na nuvem (decisão registrada: funcionar offline não é requisito do MVP).
@@ -92,14 +97,15 @@ Passoca_Padaria/
 │   ├── requirements.txt
 │   └── requirements-dev.txt
 ├── frontend/
-│   ├── index.html         # página única — tela de login + 5 seções (Clientes,
-│   │                       # Produtos, Novo Pedido, Pedidos, Usuários) trocadas
-│   │                       # via JS, sem reload
+│   ├── index.html         # página única — tela de login + 6 seções (Clientes,
+│   │                       # Produtos, Novo Pedido, Pedidos, Usuários, Auditoria)
+│   │                       # trocadas via JS, sem reload
 │   ├── css/style.css      # estilo compartilhado entre as seções
 │   └── js/                # api.js (cliente HTTP), ui.js (feedback visual),
-│                           # app.js (controlador de abas), auth.js (login/logout),
-│                           # cadastro-cliente.js, cadastro-produto.js,
-│                           # novo-pedido.js, lista-pedidos.js, usuarios.js
+│                           # app.js (controlador de abas), auth.js (login/logout
+│                           # + gate de permissão por perfil), cadastro-cliente.js,
+│                           # cadastro-produto.js, novo-pedido.js, lista-pedidos.js,
+│                           # usuarios.js, auditoria.js
 ├── docs/referencia-prototipo/  # protótipo HTML original, só como referência de UX
 └── CLAUDE.md
 ```

@@ -196,6 +196,15 @@ detalhe — incremental não significa "perguntar toda linha de código".
     produto e cancelar pedido — decisões do usuário); proprietária = tudo.
     **A-03 sai da condição de bloqueio — dos 3 críticos/altos, nenhum
     resta.** Falta o gate no frontend (esconder botões) = Incremento 19.1.
+  - **Incremento 20 (feito):** frontend dos achados A-01 e A-03 (fecha
+    18.1 e 19.1). Aba "Auditoria" (só proprietária) consultando
+    `GET /auditoria` com filtro por tipo/período; e `auth.js` esconde do
+    padeiro a aba "Novo Pedido" + os formulários de cadastro de
+    cliente/produto, e `lista-pedidos.js` esconde dele os botões
+    "Confirmar sinal"/"Cancelar". Gate de frontend não é segurança (o
+    backend é) — é não oferecer botão que daria 403. Também: mensagem do
+    403 de "só proprietária" ficou genérica (servia pra Usuários e
+    Auditoria, citava só "gerenciar usuários").
 
 ## 3. Visão do negócio
 
@@ -269,14 +278,15 @@ implementar, não são RF confirmados):**
     decisão do usuário), pedido (registrar, confirmar sinal, avançar,
     cancelar). Não acessa Usuários nem Auditoria.
   - **proprietária** — tudo.
-  Frontend (esconder botão sem permissão) fica pro Incremento 19.1.
+  Gate no frontend (esconder botão sem permissão): **feito no Incremento 20**.
 - Edição de pedido já criado (o levantamento original só previa criar/cancelar).
 - Histórico de pedidos por cliente.
 - ~~Trilha de auditoria de operações sensíveis~~ — **feito em 2026-08-27
   (Incremento 18, auditoria A-01)**: tabela `eventos_auditoria` registra
   autor + estado antes/depois de toda operação que muda estado de pedido,
   preço de produto ou cadastro de usuário. `GET /auditoria` (só
-  proprietária) pra consultar. Falta a tela (Incremento 18.1).
+  proprietária) pra consultar. Tela da trilha: **feita no Incremento 20**
+  (aba "Auditoria").
 - ~~Trocar a própria senha (logado)~~ — **feito em 2026-08-25 (Incremento
   14)**: usuário logado troca a senha confirmando a atual, em
   `/auth/trocar-senha` — mas só a proprietária pode usar (ver acima).

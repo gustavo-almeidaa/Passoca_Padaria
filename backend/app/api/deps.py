@@ -16,8 +16,7 @@ from app.models.usuario import PerfilUsuario, Usuario
 
 MENSAGEM_NAO_AUTENTICADO = "Sessão expirada ou inválida. Faça login novamente."
 MENSAGEM_SO_PROPRIETARIA = (
-    "Só a proprietária pode gerenciar usuários (decisão registrada em "
-    "CLAUDE.md, seção 11 — 2026-08-25, pra evitar erro ou troca indesejada)."
+    "Esta área é restrita à proprietária. Se precisar de acesso, fale com ela."
 )
 
 _ROTULO_PERFIL = {
