@@ -17,7 +17,7 @@ from app.api.deps import PERFIS_BALCAO, exigir_perfis, get_usuario_atual
 from app.core.database import get_db
 from app.models.pedido import Pedido
 from app.models.usuario import Usuario
-from app.schemas.pedido import PedidoCreate, PedidoRead
+from app.schemas.pedido import PedidoCreate, PedidoRead, PedidoUpdate
 from app.services import pedidos as pedidos_service
 
 # Incremento 12: exige login pra qualquer rota de pedido. Incremento 18: o
@@ -73,6 +73,32 @@ def obter_pedido(pedido_id: int, db: Session = Depends(get_db)) -> Pedido:
     if pedido is None:
         raise HTTPException(status_code=404, detail="Pedido não encontrado.")
     return pedido
+
+
+@router.put("/{pedido_id}", response_model=PedidoRead)
+def editar_pedido(
+    pedido_id: int,
+    payload: PedidoUpdate,
+    db: Session = Depends(get_db),
+    usuario_atual: Usuario = Depends(
+        exigir_perfis(*PERFIS_BALCAO, acao="editar pedidos")
+    ),
+) -> Pedido:
+    """Edita itens e/ou data de entrega de um pedido ainda em `recebido`
+    (Incremento 23). Não muda o cliente."""
+    try:
+        return pedidos_service.editar_pedido(
+            db, pedido_id, payload, usuario=usuario_atual
+        )
+    except pedidos_service.PedidoNaoEncontrado as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except (
+        pedidos_service.PedidoNaoEditavel,
+        pedidos_service.ProdutoInvalido,
+        pedidos_service.AntecedenciaMinimaNaoRespeitada,
+        pedidos_service.AntecedenciaMaximaExcedida,
+    ) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
 @router.post("/{pedido_id}/confirmar-sinal", response_model=PedidoRead)

@@ -81,6 +81,11 @@ Incrementos recentes:
   `docs/desempenho.md` (p95 dos endpoints ~164ms local). Corrigido N+1 em
   `GET /pedidos`. Recomendação: plano Starter do Render antes de uso
   comercial (o free "dorme").
+- **23 — Editar pedido** (2026-08-27): `PUT /pedidos/{id}` edita itens e/ou
+  data de entrega de um pedido ainda em `recebido` (não muda o cliente).
+  Revalida RN01/RN05 na nova data; reseta o sinal se a composição de itens
+  personalizáveis mudar; itens antigos mantêm o preço travado. Backend
+  só — o frontend fica pro Incremento 23.1.
 
 O sistema passou a depender de internet, já que o banco agora é gerenciado
 na nuvem (decisão registrada: funcionar offline não é requisito do MVP).
@@ -185,10 +190,10 @@ uvicorn app.main:app --reload      # sobe a API + frontend em http://127.0.0.1:8
 
 Isso cria o schema completo (`clientes`, `produtos`, `pedidos`,
 `itens_pedido`, `usuarios`, `tentativas_login`, `eventos_auditoria`) no
-banco Postgres do Neon e roda os 187 testes automatizados (schema + API +
+banco Postgres do Neon e roda os 204 testes automatizados (schema + API +
 services + autenticação + limite de tentativas + trilha de auditoria +
-matriz de permissão + desempenho — cada teste usa um SQLite em memória
-isolado, não toca no Neon). No primeiro
+matriz de permissão + desempenho + edição de pedido — cada teste usa um
+SQLite em memória isolado, não toca no Neon). No primeiro
 boot, se `ADMIN_EMAIL`/`ADMIN_SENHA` estiverem configurados e o banco não
 tiver nenhum usuário, a conta da proprietária é criada automaticamente.
 Com o servidor no ar: o sistema fica em `http://127.0.0.1:8000/` — pede
@@ -299,6 +304,7 @@ tem acesso à operação, retornam `403` (Incremento 19 — ver coluna
 | `POST` | `/pedidos` | Registrar pedido (RF03, RF04) — aplica RN01 — **proprietária/atendente** |
 | `GET` | `/pedidos?data_inicio=&data_fim=` | Listar pedidos por período/dia (RF07) — qualquer perfil |
 | `GET` | `/pedidos/{id}` | Consultar um pedido, com seus itens (RF05) — qualquer perfil |
+| `PUT` | `/pedidos/{id}` | Editar itens/data de um pedido em `recebido` (Incremento 23) — revalida RN01/RN05 — **proprietária/atendente** |
 | `POST` | `/pedidos/{id}/confirmar-sinal` | Confirma o sinal de um pedido (suporte a RN02) — **proprietária/atendente** |
 | `POST` | `/pedidos/{id}/avancar` | Avança para a próxima etapa de produção — aplica RN02 e RN04 — qualquer perfil (inclui padeiro) |
 | `POST` | `/pedidos/{id}/cancelar` | Cancela o pedido (RF06) — aplica RN03 e RN04 — **proprietária/atendente** |

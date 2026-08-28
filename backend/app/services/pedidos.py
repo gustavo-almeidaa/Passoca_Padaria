@@ -10,7 +10,7 @@ ver `app/api/pedidos.py`.
 """
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, time, timedelta
 
 from sqlalchemy.orm import Session, selectinload
 
@@ -19,7 +19,7 @@ from app.models.item_pedido import ItemPedido
 from app.models.pedido import TRANSICOES_VALIDAS, Pedido, StatusPedido
 from app.models.produto import Produto
 from app.models.usuario import Usuario
-from app.schemas.pedido import PedidoCreate
+from app.schemas.pedido import PedidoCreate, PedidoUpdate
 from app.services import auditoria
 
 # RN01 — antecedência mínima entre a criação do pedido e a data/hora de entrega.
@@ -69,12 +69,66 @@ class TransicaoInvalida(Exception):
     """RN04: ação de avançar/cancelar não permitida no status atual do pedido."""
 
 
+class PedidoNaoEditavel(Exception):
+    """Incremento 23: pedido só é editável enquanto está em `recebido`."""
+
+
 class ForaDaJanelaDeCancelamento(Exception):
     """RN03: cancelamento pedido a menos de 12h da entrega."""
 
 
 class IntervaloDeDatasInvalido(Exception):
     """RF07: `data_fim` anterior a `data_inicio` na listagem por período."""
+
+
+def _validar_momento_entrega(
+    data_entrega: date, hora_entrega: time, agora: datetime
+) -> None:
+    """RN01 (mínimo 24h) e RN05 (máximo 90 dias) sobre a data/hora de
+    entrega, contadas a partir de `agora`. Vale tanto na criação quanto na
+    edição (Incremento 23) — uma remarcação também precisa dar tempo pra
+    cozinha."""
+    momento = datetime.combine(data_entrega, hora_entrega)
+    if momento - agora < ANTECEDENCIA_MINIMA:
+        raise AntecedenciaMinimaNaoRespeitada(
+            "Escolha uma data e horário de entrega com pelo menos 24h de "
+            "antecedência a partir de agora."
+        )
+    if momento - agora > ANTECEDENCIA_MAXIMA:
+        raise AntecedenciaMaximaExcedida(
+            "Escolha uma data de entrega em até 90 dias a partir de hoje."
+        )
+
+
+def _resolver_produto_ativo(db: Session, produto_id: int) -> Produto:
+    produto = db.get(Produto, produto_id)
+    if produto is None:
+        raise ProdutoInvalido(produto_id, f"Produto {produto_id} não encontrado.")
+    if not produto.ativo:
+        raise ProdutoInvalido(
+            produto_id,
+            f'Produto "{produto.nome}" não está mais disponível para encomenda.',
+        )
+    return produto
+
+
+def _snapshot_pedido_completo(pedido: Pedido) -> dict:
+    """Estado do pedido para a trilha de auditoria — status/sinal (de
+    `auditoria.snapshot_pedido`) mais entrega e itens."""
+    return {
+        **auditoria.snapshot_pedido(pedido),
+        "cliente_id": pedido.cliente_id,
+        "data_entrega": pedido.data_entrega.isoformat(),
+        "hora_entrega": pedido.hora_entrega.isoformat(),
+        "itens": [
+            {
+                "produto_id": item.produto_id,
+                "quantidade": item.quantidade,
+                "preco_unitario": str(item.preco_unitario),
+            }
+            for item in pedido.itens
+        ],
+    }
 
 
 def criar_pedido(
@@ -98,30 +152,11 @@ def criar_pedido(
     if cliente is None:
         raise ClienteNaoEncontrado(f"Cliente {payload.cliente_id} não encontrado.")
 
-    momento_entrega = datetime.combine(payload.data_entrega, payload.hora_entrega)
-    if momento_entrega - agora < ANTECEDENCIA_MINIMA:
-        raise AntecedenciaMinimaNaoRespeitada(
-            "Escolha uma data e horário de entrega com pelo menos 24h de "
-            "antecedência a partir de agora."
-        )
-    if momento_entrega - agora > ANTECEDENCIA_MAXIMA:
-        raise AntecedenciaMaximaExcedida(
-            "Escolha uma data de entrega em até 90 dias a partir de hoje."
-        )
+    _validar_momento_entrega(payload.data_entrega, payload.hora_entrega, agora)
 
     itens: list[ItemPedido] = []
     for item_in in payload.itens:
-        produto = db.get(Produto, item_in.produto_id)
-        if produto is None:
-            raise ProdutoInvalido(
-                item_in.produto_id,
-                f"Produto {item_in.produto_id} não encontrado.",
-            )
-        if not produto.ativo:
-            raise ProdutoInvalido(
-                item_in.produto_id,
-                f'Produto "{produto.nome}" não está mais disponível para encomenda.',
-            )
+        produto = _resolver_produto_ativo(db, item_in.produto_id)
         itens.append(
             ItemPedido(
                 produto_id=produto.id,
@@ -147,22 +182,85 @@ def criar_pedido(
         entidade=auditoria.ENTIDADE_PEDIDO,
         entidade_id=pedido.id,
         acao="criar",
-        posterior={
-            **auditoria.snapshot_pedido(pedido),
-            "cliente_id": pedido.cliente_id,
-            "data_entrega": pedido.data_entrega.isoformat(),
-            "hora_entrega": pedido.hora_entrega.isoformat(),
-            "itens": [
-                {
-                    "produto_id": item.produto_id,
-                    "quantidade": item.quantidade,
-                    "preco_unitario": str(item.preco_unitario),
-                }
-                for item in pedido.itens
-            ],
-        },
+        posterior=_snapshot_pedido_completo(pedido),
     )
 
+    db.commit()
+    db.refresh(pedido)
+    return pedido
+
+
+def editar_pedido(
+    db: Session,
+    pedido_id: int,
+    payload: PedidoUpdate,
+    *,
+    usuario: Usuario,
+    agora: datetime | None = None,
+) -> Pedido:
+    """Edita um pedido existente (Incremento 23) — itens e/ou data/hora de
+    entrega. O cliente não muda.
+
+    Regras (decisões do usuário, 2026-08-27):
+    - Só é editável enquanto está em `recebido` (depois disso o padeiro já
+      está produzindo).
+    - A nova data/hora revalida RN01 (24h) e RN05 (90 dias) a partir de
+      agora.
+    - Se a composição de itens **personalizáveis** mudar (produto ou
+      quantidade), `sinal_confirmado` volta a `false` — o escopo mudou.
+    - Itens que já estavam no pedido mantêm o `preco_unitario` travado na
+      criação; itens novos pegam o preço atual do cardápio.
+    """
+    agora = agora or datetime.now()
+    pedido = _obter_pedido_ou_404(db, pedido_id)
+
+    if pedido.status != StatusPedido.RECEBIDO:
+        raise PedidoNaoEditavel(
+            f'Pedido em "{pedido.status.value}" não pode mais ser editado — '
+            "a produção já começou."
+        )
+
+    anterior = _snapshot_pedido_completo(pedido)
+    _validar_momento_entrega(payload.data_entrega, payload.hora_entrega, agora)
+
+    preco_travado = {item.produto_id: item.preco_unitario for item in pedido.itens}
+    personalizaveis_antes = {
+        (item.produto_id, item.quantidade)
+        for item in pedido.itens
+        if item.produto.personalizavel
+    }
+
+    novos_itens: list[ItemPedido] = []
+    personalizaveis_depois: set[tuple[int, int]] = set()
+    for item_in in payload.itens:
+        produto = _resolver_produto_ativo(db, item_in.produto_id)
+        novos_itens.append(
+            ItemPedido(
+                produto_id=produto.id,
+                quantidade=item_in.quantidade,
+                preco_unitario=preco_travado.get(produto.id, produto.preco),
+            )
+        )
+        if produto.personalizavel:
+            personalizaveis_depois.add((produto.id, item_in.quantidade))
+
+    # cascade="all, delete-orphan" (ver models/pedido.py) apaga os itens
+    # antigos e insere os novos.
+    pedido.itens = novos_itens
+    pedido.data_entrega = payload.data_entrega
+    pedido.hora_entrega = payload.hora_entrega
+    if personalizaveis_depois != personalizaveis_antes:
+        pedido.sinal_confirmado = False
+
+    auditoria.registrar_evento(
+        db,
+        usuario=usuario,
+        entidade=auditoria.ENTIDADE_PEDIDO,
+        entidade_id=pedido.id,
+        acao="editar",
+        anterior=anterior,
+        posterior=_snapshot_pedido_completo(pedido),
+    )
     db.commit()
     db.refresh(pedido)
     return pedido
