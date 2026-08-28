@@ -46,13 +46,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const perfil = ROTULOS_PERFIL[usuario.perfil] || usuario.perfil;
     usuarioInfo.textContent = `Olá, ${usuario.nome} (${perfil})`;
 
-    // Incremento 15: a aba "Usuários" (e tudo dentro dela — cadastro,
-    // trocar senha, lista) é exclusiva da proprietária — decisão do
-    // usuário, "pra evitar erro ou troca indesejada". O backend já barra
-    // isso com 403 de qualquer forma; esconder o botão aqui é só não
-    // oferecer uma opção que ia dar erro na cara de quem não pode usar.
-    const abaUsuarios = document.querySelector('[data-tab-alvo="usuarios"]');
-    if (abaUsuarios) abaUsuarios.hidden = usuario.perfil !== "proprietaria";
+    aplicarPermissoes(usuario.perfil);
 
     if (window.ativarTela) window.ativarTela("clientes");
   }
@@ -61,6 +55,36 @@ document.addEventListener("DOMContentLoaded", () => {
     appShell.hidden = true;
     telaLogin.hidden = false;
     window.usuarioAtual = null;
+  }
+
+  /*
+   * Gate de permissão no frontend — Incrementos 15, 18 e 20. Espelha a
+   * matriz que o backend aplica em api/deps.py::exigir_perfis (A-03): NÃO
+   * é controle de segurança (o backend é), é só não oferecer um botão que
+   * ia dar 403 na cara de quem não pode usar.
+   *
+   *  - proprietária: vê tudo.
+   *  - atendente: vê tudo, menos "Usuários" e "Auditoria".
+   *  - padeiro: só leitura + avançar status. Não vê "Novo Pedido", nem os
+   *    formulários de cadastro de cliente/produto (as listas continuam),
+   *    nem os botões "Confirmar sinal"/"Cancelar" nos pedidos
+   *    (ver frontend/js/lista-pedidos.js).
+   */
+  function aplicarPermissoes(perfil) {
+    const soProprietaria = perfil !== "proprietaria";
+    const ehPadeiro = perfil === "padeiro";
+
+    esconder('[data-tab-alvo="usuarios"]', soProprietaria);
+    esconder('[data-tab-alvo="auditoria"]', soProprietaria);
+
+    esconder('[data-tab-alvo="pedido"]', ehPadeiro);
+    esconder("#card-cadastro-cliente", ehPadeiro);
+    esconder("#card-cadastro-produto", ehPadeiro);
+  }
+
+  function esconder(seletor, escondido) {
+    const el = document.querySelector(seletor);
+    if (el) el.hidden = escondido;
   }
 
   formLogin.addEventListener("submit", async (evento) => {

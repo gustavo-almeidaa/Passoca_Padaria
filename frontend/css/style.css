@@ -455,6 +455,18 @@ button.danger:disabled {
 }
 .selo--inativo { background: var(--border); color: var(--ink-soft); }
 
+/* Trilha de auditoria (Incremento 20) — o "antes → depois" de cada evento. */
+.auditoria__mudanca {
+  margin-top: 6px;
+  font-size: 0.82rem;
+  color: var(--ink);
+  background: var(--cream);
+  border-radius: 6px;
+  padding: 6px 10px;
+  word-break: break-word;
+}
+.auditoria__mudanca b { color: var(--crust); }
+
 footer {
   text-align: center;
   color: var(--ink-soft);

@@ -75,7 +75,16 @@ async function apiFetch(caminho, opcoes = {}) {
       // tela travada esperando uma requisição que nunca vai funcionar).
       document.dispatchEvent(new CustomEvent("auth:necessaria"));
     }
-    throw new ApiError(extrairMensagemErro(corpo), resposta.status);
+    let mensagem = extrairMensagemErro(corpo);
+    // O backend sempre manda uma frase no `detail` do 403 (ver
+    // api/deps.py::exigir_perfis). Este fallback só cobre um 403 sem
+    // corpo, que não deveria acontecer — mas se acontecer, é melhor uma
+    // frase clara que "erro inesperado".
+    if (resposta.status === 403 && (!corpo || !corpo.detail)) {
+      mensagem =
+        "Seu perfil não tem permissão para essa ação. Fale com a proprietária.";
+    }
+    throw new ApiError(mensagem, resposta.status);
   }
 
   return corpo;
@@ -110,6 +119,16 @@ const api = {
     apiFetch("/auth/login", { method: "POST", body: JSON.stringify({ email, senha }) }),
   logout: () => apiFetch("/auth/logout", { method: "POST" }),
   me: () => apiFetch("/auth/me"),
+  listarAuditoria: (opcoes = {}) => {
+    const params = new URLSearchParams();
+    if (opcoes.entidade) params.set("entidade", opcoes.entidade);
+    if (opcoes.entidade_id) params.set("entidade_id", opcoes.entidade_id);
+    if (opcoes.data_inicio) params.set("data_inicio", opcoes.data_inicio);
+    if (opcoes.data_fim) params.set("data_fim", opcoes.data_fim);
+    if (opcoes.limite) params.set("limite", opcoes.limite);
+    const query = params.toString();
+    return apiFetch(`/auditoria${query ? `?${query}` : ""}`);
+  },
   listarUsuarios: () => apiFetch("/auth/usuarios"),
   criarUsuario: (dados) =>
     apiFetch("/auth/usuarios", { method: "POST", body: JSON.stringify(dados) }),
