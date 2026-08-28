@@ -15,7 +15,7 @@ entrega.
 - **Backend:** Python + FastAPI
 - **Banco de dados:** PostgreSQL gerenciado ([Neon](https://neon.tech)), via SQLAlchemy + Alembic
 - **Frontend:** HTML/JS simples (sem framework)
-- **Testes:** pytest (roda contra SQLite isolado em memória — não depende do Neon)
+- **Testes:** pytest — SQLite em memória no dia a dia; o CI roda a mesma suíte também contra PostgreSQL (Incremento 21)
 
 ## Status do projeto
 
@@ -71,6 +71,10 @@ Incrementos recentes:
   tipo/período; o `auth.js` esconde do padeiro a aba "Novo Pedido" e os
   formulários de cadastro, e o `lista-pedidos.js` esconde dele os botões
   "Confirmar sinal"/"Cancelar". Fecha 18.1 e 19.1.
+- **21 — Paridade de teste com PostgreSQL** (2026-08-27, auditoria A-04):
+  a suíte roda contra `TEST_DATABASE_URL` quando setada (Postgres no CI),
+  senão SQLite. Dois jobs de CI bloqueantes: a suíte inteira contra
+  `postgres:16` e o round-trip das migrations no Postgres.
 
 O sistema passou a depender de internet, já que o banco agora é gerenciado
 na nuvem (decisão registrada: funcionar offline não é requisito do MVP).
@@ -187,18 +191,25 @@ login antes de mostrar qualquer tela — e a documentação interativa
 O CI (`.github/workflows/ci.yml`) roda a cada push/PR na `main`, em Python
 3.12.7 (mesma versão do Render):
 
-| Comando | O que checa |
+| Job | O que checa |
 |---|---|
-| `pytest -q` | Suíte de testes (SQLite isolado) |
+| `pytest -q` | Suíte de testes contra **SQLite** em memória (rápido) |
+| `pytest` contra **PostgreSQL** | mesma suíte, banco `postgres:16` (Incremento 21 — `CHECK`, `Numeric`, transações como em produção) |
+| migrations no PostgreSQL | `upgrade head → downgrade base → upgrade head` — prova que a cadeia sobe/desce no banco real |
 | `ruff check .` | Lint e ordenação de import — config em `backend/pyproject.toml` |
 | `bandit -c pyproject.toml -r app` | Varredura de segurança do código da aplicação |
 | `pip-audit -r requirements.txt` | CVE conhecido nas dependências de produção |
 
-Rodar tudo localmente (de dentro de `backend/`, com o venv ativo):
+Todos os jobs **bloqueiam o merge**.
+
+Rodar o essencial localmente (de dentro de `backend/`, com o venv ativo):
 
 ```bash
 pytest -q && ruff check . && bandit -c pyproject.toml -r app && pip-audit -r requirements.txt
 ```
+
+Pra rodar a suíte contra um PostgreSQL local (opcional — o CI já faz):
+`TEST_DATABASE_URL="postgresql+psycopg://user:senha@localhost:5432/db" pytest -q`.
 
 > **Windows:** o `pip-audit` quebra com `UnicodeDecodeError` quando o
 > caminho do projeto tem acento (bug do `pip-api` ao ler a saída do

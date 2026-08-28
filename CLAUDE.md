@@ -165,9 +165,9 @@ detalhe — incremental não significa "perguntar toda linha de código".
   ação da auditoria, por ordem de severidade. **Condição de bloqueio
   registrada: não comercializar para terceiros com A-01, A-02 ou A-03 em
   aberto, nem com L-01 (modelo de isolamento multi-tenant) indefinido.**
-  Status em 2026-08-27: **A-01, A-02 e A-03 fechados** (Incrementos 17, 18,
-  19). Restam da auditoria: A-04 (paridade de teste com Postgres), A-07
-  (desempenho + plano de hospedagem), e as lacunas SaaS L-01..L-08.
+  Status em 2026-08-27: **A-01, A-02, A-03 e A-04 fechados** (Incrementos
+  17, 18, 19, 21). Restam da auditoria: A-07 (desempenho + plano de
+  hospedagem) e as lacunas SaaS L-01..L-08.
   - **Incremento 16 (feito):** CI no GitHub Actions rodando `pytest` +
     `ruff` + `bandit` + `pip-audit` a cada push/PR (A-05); ferramental de
     qualidade adotado (A-08); tags retroativas `incremento-01..15` (A-06).
@@ -205,6 +205,13 @@ detalhe — incremental não significa "perguntar toda linha de código".
     backend é) — é não oferecer botão que daria 403. Também: mensagem do
     403 de "só proprietária" ficou genérica (servia pra Usuários e
     Auditoria, citava só "gerenciar usuários").
+  - **Incremento 21 (feito):** paridade de teste com PostgreSQL (A-04).
+    `conftest.py` roda a suíte contra o banco de `TEST_DATABASE_URL`
+    quando setada (Postgres no CI), senão SQLite em memória (default
+    local). Dois jobs novos no CI, **bloqueantes**: `testes-postgres` (a
+    suíte inteira contra `postgres:16`) e `migracoes-postgres` (round-trip
+    `upgrade head → downgrade base → upgrade head` — as migrations, que
+    nunca tinham sido executadas de verdade, só validadas offline).
 
 ## 3. Visão do negócio
 
@@ -451,9 +458,11 @@ Não escolha estes itens sozinho sem perguntar primeiro, mesmo que pareça
       decidido em 2026-08-25 junto com a escolha do banco gerenciado
       (que já pressupõe internet disponível).
 - [x] Integração contínua — **GitHub Actions**, decidido no Incremento 16
-      (2026-08-27, auditoria A-05). `.github/workflows/ci.yml` roda
-      `pytest` + `ruff` + `bandit` + `pip-audit` a cada push/PR na `main`,
-      em Python 3.12.7 (mesma versão do Render).
+      (2026-08-27, auditoria A-05). `.github/workflows/ci.yml` roda a cada
+      push/PR na `main`, em Python 3.12.7 (mesma versão do Render):
+      `pytest` (SQLite), `ruff` + `bandit` + `pip-audit`, e — desde o
+      Incremento 21 (A-04) — `pytest` contra `postgres:16` e o round-trip
+      das migrations no Postgres. Todos os jobs bloqueiam o merge.
 - [ ] Gate de deploy (CI verde antes de publicar no Render) — **em
       aberto**. No Incremento 16 o `autoDeploy` do Render ficou ligado
       (decisão do dono, 2026-08-27): o CI roda mas não bloqueia o deploy.

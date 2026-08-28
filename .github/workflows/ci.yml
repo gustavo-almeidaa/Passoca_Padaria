@@ -12,6 +12,12 @@
 # Python 3.12.7: mesma versão do Render (ver render.yaml). O dev local
 # ainda roda 3.9; a diferença é conhecida e o CI valida a versão que vai
 # pra produção.
+#
+# Incremento 21 (auditoria A-04): além do `testes` (SQLite, rápido), dois
+# jobs contra PostgreSQL — a suíte inteira (`testes-postgres`) e o
+# round-trip das migrations (`migracoes-postgres`). Postgres é o banco de
+# produção (Neon); CHECK constraint, tipo Numeric e semântica transacional
+# diferem do SQLite.
 
 name: CI
 
@@ -38,6 +44,74 @@ jobs:
           cache-dependency-path: backend/requirements-dev.txt
       - run: pip install -r requirements-dev.txt
       - run: pytest -q
+
+  testes-postgres:
+    name: Testes (pytest contra PostgreSQL)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: passoca
+          POSTGRES_PASSWORD: passoca
+          POSTGRES_DB: passoca_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      # conftest.py roda a suíte contra este banco quando TEST_DATABASE_URL
+      # está setada (senão, SQLite em memória — o default local).
+      TEST_DATABASE_URL: postgresql+psycopg://passoca:passoca@localhost:5432/passoca_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12.7"
+          cache: pip
+          cache-dependency-path: backend/requirements-dev.txt
+      - run: pip install -r requirements-dev.txt
+      - run: pytest -q
+
+  migracoes-postgres:
+    name: Migrations (round-trip no PostgreSQL)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: passoca
+          POSTGRES_PASSWORD: passoca
+          POSTGRES_DB: passoca_mig
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      # env.py lê a URL do `settings.database_url`, que vem de DATABASE_URL.
+      DATABASE_URL: postgresql+psycopg://passoca:passoca@localhost:5432/passoca_mig
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12.7"
+          cache: pip
+          cache-dependency-path: backend/requirements-dev.txt
+      - run: pip install -r requirements-dev.txt
+      - name: sobe e desce a cadeia de migrations, depois sobe de novo
+        # As migrations do projeto são escritas p/ Postgres (server default
+        # `now()`) e nunca tinham sido executadas de verdade — só validadas
+        # offline. Isto prova que sobem, descem e sobem de novo sem erro.
+        run: |
+          alembic upgrade head
+          alembic downgrade base
+          alembic upgrade head
 
   qualidade:
     name: Qualidade (ruff, bandit, pip-audit)
