@@ -189,6 +189,59 @@ def _criar_pedido(client, *, personalizavel=False, delta=timedelta(days=3)):
     return resp.json()
 
 
+class TestEditarPedidoAPI:
+    """Incremento 23 — PUT /pedidos/{id}."""
+
+    def test_edita_com_sucesso(self, client):
+        pedido = _criar_pedido(client)
+        produto_id = pedido["itens"][0]["produto_id"]
+        nova_data, nova_hora = _entrega(timedelta(days=5))
+
+        resp = client.put(
+            f"/pedidos/{pedido['id']}",
+            json={
+                "data_entrega": nova_data,
+                "hora_entrega": nova_hora,
+                "itens": [{"produto_id": produto_id, "quantidade": 9}],
+            },
+        )
+
+        assert resp.status_code == 200
+        corpo = resp.json()
+        assert corpo["data_entrega"] == nova_data
+        assert corpo["itens"][0]["quantidade"] == 9
+
+    def test_editar_pedido_inexistente_retorna_404(self, client):
+        nova_data, nova_hora = _entrega(timedelta(days=5))
+        resp = client.put(
+            "/pedidos/9999",
+            json={
+                "data_entrega": nova_data,
+                "hora_entrega": nova_hora,
+                "itens": [{"produto_id": 1, "quantidade": 1}],
+            },
+        )
+        assert resp.status_code == 404
+
+    def test_editar_pedido_em_producao_retorna_422(self, client):
+        pedido = _criar_pedido(client)
+        produto_id = pedido["itens"][0]["produto_id"]
+        client.post(f"/pedidos/{pedido['id']}/avancar")  # recebido -> em_producao
+        nova_data, nova_hora = _entrega(timedelta(days=5))
+
+        resp = client.put(
+            f"/pedidos/{pedido['id']}",
+            json={
+                "data_entrega": nova_data,
+                "hora_entrega": nova_hora,
+                "itens": [{"produto_id": produto_id, "quantidade": 2}],
+            },
+        )
+
+        assert resp.status_code == 422
+        assert "produção" in resp.json()["detail"].lower()
+
+
 class TestConfirmarSinalAPI:
     def test_confirma_sinal_com_sucesso(self, client):
         pedido = _criar_pedido(client, personalizavel=True)

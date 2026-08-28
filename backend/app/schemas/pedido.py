@@ -39,8 +39,10 @@ class ItemPedidoRead(BaseModel):
     preco_unitario: Decimal
 
 
-class PedidoCreate(BaseModel):
-    cliente_id: int
+class _PedidoEntradaBase(BaseModel):
+    """Campos comuns de criação e edição de pedido — o cliente só entra na
+    criação (mudar o cliente de um pedido é 'outro pedido', não uma edição)."""
+
     data_entrega: date
     hora_entrega: time
     itens: list[ItemPedidoCreate]
@@ -51,6 +53,15 @@ class PedidoCreate(BaseModel):
         if not v:
             raise ValueError("O pedido precisa ter pelo menos um item.")
         return v
+
+
+class PedidoCreate(_PedidoEntradaBase):
+    cliente_id: int
+
+
+class PedidoUpdate(_PedidoEntradaBase):
+    """Edição de pedido existente (RF novo — Incremento 23). Mesmos campos
+    da criação, menos o cliente."""
 
 
 class PedidoRead(BaseModel):

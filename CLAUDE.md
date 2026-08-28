@@ -297,7 +297,15 @@ implementar, não são RF confirmados):**
     cancelar). Não acessa Usuários nem Auditoria.
   - **proprietária** — tudo.
   Gate no frontend (esconder botão sem permissão): **feito no Incremento 20**.
-- Edição de pedido já criado (o levantamento original só previa criar/cancelar).
+- ~~Edição de pedido já criado~~ — **feito em 2026-08-27 (Incremento 23)**.
+  `PUT /pedidos/{id}` (proprietária/atendente), edita itens e/ou data de
+  entrega — **não** o cliente. Regras (decisões do usuário): só edita
+  enquanto está em `recebido`; a nova data revalida RN01 (24h) e RN05
+  (90 dias) a partir de agora; se a composição de itens personalizáveis
+  mudar, `sinal_confirmado` volta a `false`; itens que já estavam no
+  pedido mantêm o preço travado, itens novos pegam o preço atual do
+  cardápio. Entra na trilha de auditoria (ação `editar`). Frontend fica
+  pro Incremento 23.1.
 - Histórico de pedidos por cliente.
 - ~~Trilha de auditoria de operações sensíveis~~ — **feito em 2026-08-27
   (Incremento 18, auditoria A-01)**: tabela `eventos_auditoria` registra
@@ -348,7 +356,9 @@ Estas regras são invariantes de domínio — devem ser aplicadas na camada de
 backend/serviço, nunca só validadas no frontend.
 
 - **RN01 — Antecedência mínima:** todo pedido deve ter `data_entrega` (+
-  `hora_entrega`) pelo menos 24h no futuro no momento da criação.
+  `hora_entrega`) pelo menos 24h no futuro no momento da criação — e
+  também a cada edição de pedido (Incremento 23), contada a partir de
+  agora, não da criação original.
 - **RN02 — Sinal para personalizados:** pedidos que incluam um produto
   marcado como `personalizavel = true` (ex.: bolo de festa personalizado)
   exigem confirmação de sinal (`sinal_confirmado = true`) antes de o pedido

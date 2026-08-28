@@ -13,7 +13,7 @@ from app.models import CategoriaProduto, Cliente, Produto, UnidadeProduto
 from app.models.item_pedido import ItemPedido
 from app.models.pedido import Pedido, StatusPedido
 from app.models.usuario import PerfilUsuario, Usuario
-from app.schemas.pedido import ItemPedidoCreate, PedidoCreate
+from app.schemas.pedido import ItemPedidoCreate, PedidoCreate, PedidoUpdate
 from app.services import pedidos as pedidos_service
 
 
@@ -411,6 +411,183 @@ class TestCancelarPedidoRN03RN04:
     def test_pedido_inexistente_gera_erro_especifico(self, db_session, operador):
         with pytest.raises(pedidos_service.PedidoNaoEncontrado):
             pedidos_service.cancelar_pedido(db_session, 9999, usuario=operador)
+
+
+def _update(pedido, *, itens=None, entrega=None):
+    """Monta um PedidoUpdate a partir do estado atual do pedido, trocando só
+    o que for passado."""
+    entrega = entrega or datetime.combine(pedido.data_entrega, pedido.hora_entrega)
+    if itens is None:
+        itens = [
+            ItemPedidoCreate(produto_id=i.produto_id, quantidade=i.quantidade)
+            for i in pedido.itens
+        ]
+    return PedidoUpdate(
+        data_entrega=entrega.date(),
+        hora_entrega=entrega.time(),
+        itens=itens,
+    )
+
+
+class TestEditarPedido:
+    """Incremento 23 — editar itens e/ou data de entrega de um pedido em
+    `recebido`. Regras confirmadas com o usuário em 2026-08-27."""
+
+    AGORA = datetime(2026, 1, 8, 10, 0)  # bem antes da entrega padrão (dia 10)
+
+    def test_edita_quantidade_de_item(self, db_session, operador):
+        pedido = _criar_pedido_direto(db_session)
+        produto_id = pedido.itens[0].produto_id
+
+        atualizado = pedidos_service.editar_pedido(
+            db_session,
+            pedido.id,
+            _update(pedido, itens=[ItemPedidoCreate(produto_id=produto_id, quantidade=7)]),
+            usuario=operador,
+            agora=self.AGORA,
+        )
+
+        assert atualizado.itens[0].quantidade == 7
+
+    def test_edita_data_de_entrega(self, db_session, operador):
+        pedido = _criar_pedido_direto(db_session)
+        nova = datetime(2026, 1, 15, 9, 0)
+
+        atualizado = pedidos_service.editar_pedido(
+            db_session, pedido.id, _update(pedido, entrega=nova),
+            usuario=operador, agora=self.AGORA,
+        )
+
+        assert atualizado.data_entrega == nova.date()
+        assert atualizado.hora_entrega == nova.time()
+
+    def test_item_que_ja_existia_mantem_preco_travado(self, db_session, operador):
+        pedido = _criar_pedido_direto(db_session)
+        produto = db_session.get(Produto, pedido.itens[0].produto_id)
+        preco_original = pedido.itens[0].preco_unitario
+        produto.preco = Decimal("999.00")  # reajuste do cardápio depois
+        db_session.commit()
+
+        atualizado = pedidos_service.editar_pedido(
+            db_session, pedido.id,
+            _update(pedido, itens=[ItemPedidoCreate(produto_id=produto.id, quantidade=3)]),
+            usuario=operador, agora=self.AGORA,
+        )
+
+        assert atualizado.itens[0].preco_unitario == preco_original
+
+    def test_item_novo_pega_preco_atual(self, db_session, operador):
+        pedido = _criar_pedido_direto(db_session)
+        pao = _criar_produto(db_session, nome="Pão", preco=Decimal("6.50"))
+
+        atualizado = pedidos_service.editar_pedido(
+            db_session, pedido.id,
+            _update(pedido, itens=[
+                ItemPedidoCreate(produto_id=pedido.itens[0].produto_id, quantidade=1),
+                ItemPedidoCreate(produto_id=pao.id, quantidade=2),
+            ]),
+            usuario=operador, agora=self.AGORA,
+        )
+
+        item_pao = next(i for i in atualizado.itens if i.produto_id == pao.id)
+        assert item_pao.preco_unitario == Decimal("6.50")
+
+    def test_rejeita_edicao_de_pedido_em_producao(self, db_session, operador):
+        pedido = _criar_pedido_direto(db_session, status=StatusPedido.EM_PRODUCAO)
+
+        with pytest.raises(pedidos_service.PedidoNaoEditavel):
+            pedidos_service.editar_pedido(
+                db_session, pedido.id, _update(pedido), usuario=operador, agora=self.AGORA
+            )
+
+    def test_rejeita_edicao_de_pedido_entregue(self, db_session, operador):
+        pedido = _criar_pedido_direto(db_session, status=StatusPedido.ENTREGUE)
+
+        with pytest.raises(pedidos_service.PedidoNaoEditavel):
+            pedidos_service.editar_pedido(
+                db_session, pedido.id, _update(pedido), usuario=operador, agora=self.AGORA
+            )
+
+    def test_pedido_inexistente_gera_erro_especifico(self, db_session, operador):
+        pedido = _criar_pedido_direto(db_session)
+        with pytest.raises(pedidos_service.PedidoNaoEncontrado):
+            pedidos_service.editar_pedido(
+                db_session, 9999, _update(pedido), usuario=operador, agora=self.AGORA
+            )
+
+    def test_nova_data_revalida_rn01(self, db_session, operador):
+        pedido = _criar_pedido_direto(db_session)
+        # agora = dia 8; remarcar pra dia 8 + 12h fere a antecedência de 24h
+        with pytest.raises(pedidos_service.AntecedenciaMinimaNaoRespeitada):
+            pedidos_service.editar_pedido(
+                db_session, pedido.id,
+                _update(pedido, entrega=self.AGORA + timedelta(hours=12)),
+                usuario=operador, agora=self.AGORA,
+            )
+
+    def test_nova_data_revalida_rn05(self, db_session, operador):
+        pedido = _criar_pedido_direto(db_session)
+        with pytest.raises(pedidos_service.AntecedenciaMaximaExcedida):
+            pedidos_service.editar_pedido(
+                db_session, pedido.id,
+                _update(pedido, entrega=self.AGORA + timedelta(days=91)),
+                usuario=operador, agora=self.AGORA,
+            )
+
+    def test_produto_inativo_e_rejeitado(self, db_session, operador):
+        pedido = _criar_pedido_direto(db_session)
+        inativo = _criar_produto(db_session, nome="Fora de linha", ativo=False)
+
+        with pytest.raises(pedidos_service.ProdutoInvalido):
+            pedidos_service.editar_pedido(
+                db_session, pedido.id,
+                _update(pedido, itens=[ItemPedidoCreate(produto_id=inativo.id, quantidade=1)]),
+                usuario=operador, agora=self.AGORA,
+            )
+
+    def test_adicionar_item_personalizavel_reseta_o_sinal(self, db_session, operador):
+        pedido = _criar_pedido_direto(
+            db_session, personalizavel=True, sinal_confirmado=True
+        )
+        base_id = pedido.itens[0].produto_id
+        # muda a quantidade do item personalizável -> composição mudou
+        atualizado = pedidos_service.editar_pedido(
+            db_session, pedido.id,
+            _update(pedido, itens=[ItemPedidoCreate(produto_id=base_id, quantidade=2)]),
+            usuario=operador, agora=self.AGORA,
+        )
+
+        assert atualizado.sinal_confirmado is False
+
+    def test_editar_so_a_data_nao_reseta_o_sinal(self, db_session, operador):
+        pedido = _criar_pedido_direto(
+            db_session, personalizavel=True, sinal_confirmado=True
+        )
+        atualizado = pedidos_service.editar_pedido(
+            db_session, pedido.id,
+            _update(pedido, entrega=datetime(2026, 1, 16, 10, 0)),
+            usuario=operador, agora=self.AGORA,
+        )
+
+        assert atualizado.sinal_confirmado is True
+
+    def test_registra_evento_de_auditoria(self, db_session, operador):
+        from app.models.evento_auditoria import EventoAuditoria
+
+        pedido = _criar_pedido_direto(db_session)
+        pedidos_service.editar_pedido(
+            db_session, pedido.id,
+            _update(pedido, entrega=datetime(2026, 1, 17, 10, 0)),
+            usuario=operador, agora=self.AGORA,
+        )
+
+        evento = (
+            db_session.query(EventoAuditoria)
+            .filter(EventoAuditoria.acao == "editar", EventoAuditoria.entidade == "pedido")
+            .one()
+        )
+        assert evento.usuario_email == operador.email
+        assert evento.estado_anterior["data_entrega"] != evento.estado_posterior["data_entrega"]
 
 
 class TestListarPedidosRF07:

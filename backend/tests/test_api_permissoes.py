@@ -143,6 +143,24 @@ class TestPadeiroBloqueado:
         resp = client_anonimo.post(f"/pedidos/{pedido['id']}/cancelar")
         assert resp.status_code == 403
 
+    def test_padeiro_nao_edita_pedido(self, client_anonimo, db_session):
+        _logar(client_anonimo, db_session, "proprietaria")
+        pedido = _pedido(client_anonimo)
+        produto_id = pedido["itens"][0]["produto_id"]
+        client_anonimo.post("/auth/logout")
+
+        _logar(client_anonimo, db_session, "padeiro")
+        m = datetime.now() + timedelta(days=5)
+        resp = client_anonimo.put(
+            f"/pedidos/{pedido['id']}",
+            json={
+                "data_entrega": m.date().isoformat(),
+                "hora_entrega": m.time().replace(microsecond=0).isoformat(),
+                "itens": [{"produto_id": produto_id, "quantidade": 3}],
+            },
+        )
+        assert resp.status_code == 403
+
 
 # --- O que o padeiro PODE: ler tudo e avançar status ---------------------
 
