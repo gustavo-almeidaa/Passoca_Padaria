@@ -6,16 +6,25 @@
  * telas futuras (Incrementos 6/7) usarem o mesmo padrão.
  */
 
-/** Mostra uma mensagem de feedback. `tipo`: "sucesso" | "erro". */
+const _CLASSES_FEEDBACK = ["feedback--sucesso", "feedback--erro", "feedback--aviso"];
+
+/** Mostra uma mensagem de feedback. `tipo`: "sucesso" | "erro" | "aviso".
+ *
+ * Só mexe nas classes de estado (`feedback--*`) — preserva qualquer outra
+ * classe no elemento (ex.: `ticket__feedback`, `login__feedback`), senão a
+ * segunda chamada no mesmo elemento não conseguiria mais achá-lo pelo
+ * seletor da tela. */
 function mostrarFeedback(elemento, mensagem, tipo) {
   elemento.textContent = mensagem;
-  elemento.className = `feedback feedback--${tipo}`;
+  elemento.classList.remove(..._CLASSES_FEEDBACK);
+  elemento.classList.add("feedback", `feedback--${tipo}`);
   elemento.hidden = false;
 }
 
 function limparFeedback(elemento) {
   elemento.hidden = true;
   elemento.textContent = "";
+  elemento.classList.remove(..._CLASSES_FEEDBACK);
 }
 
 /** Alterna um botão entre estado normal e "carregando" (desabilitado). */

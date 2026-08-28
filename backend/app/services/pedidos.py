@@ -210,6 +210,10 @@ def editar_pedido(
       quantidade), `sinal_confirmado` volta a `false` — o escopo mudou.
     - Itens que já estavam no pedido mantêm o `preco_unitario` travado na
       criação; itens novos pegam o preço atual do cardápio.
+    - Um item que já estava no pedido pode continuar nele mesmo que o
+      produto tenha sido desativado no cardápio depois (senão não daria
+      pra só remarcar a data de um pedido com produto fora de linha). A
+      exigência de `ativo` vale só para produto **novo** na edição.
     """
     agora = agora or datetime.now()
     pedido = _obter_pedido_ou_404(db, pedido_id)
@@ -230,10 +234,20 @@ def editar_pedido(
         if item.produto.personalizavel
     }
 
+    ja_no_pedido = set(preco_travado)
     novos_itens: list[ItemPedido] = []
     personalizaveis_depois: set[tuple[int, int]] = set()
     for item_in in payload.itens:
-        produto = _resolver_produto_ativo(db, item_in.produto_id)
+        produto = db.get(Produto, item_in.produto_id)
+        if produto is None:
+            raise ProdutoInvalido(
+                item_in.produto_id, f"Produto {item_in.produto_id} não encontrado."
+            )
+        if not produto.ativo and item_in.produto_id not in ja_no_pedido:
+            raise ProdutoInvalido(
+                item_in.produto_id,
+                f'Produto "{produto.nome}" não está mais disponível para encomenda.',
+            )
         novos_itens.append(
             ItemPedido(
                 produto_id=produto.id,

@@ -534,7 +534,7 @@ class TestEditarPedido:
                 usuario=operador, agora=self.AGORA,
             )
 
-    def test_produto_inativo_e_rejeitado(self, db_session, operador):
+    def test_produto_novo_inativo_e_rejeitado(self, db_session, operador):
         pedido = _criar_pedido_direto(db_session)
         inativo = _criar_produto(db_session, nome="Fora de linha", ativo=False)
 
@@ -544,6 +544,23 @@ class TestEditarPedido:
                 _update(pedido, itens=[ItemPedidoCreate(produto_id=inativo.id, quantidade=1)]),
                 usuario=operador, agora=self.AGORA,
             )
+
+    def test_item_ja_no_pedido_sobrevive_a_produto_desativado(self, db_session, operador):
+        """Dá pra só remarcar a data de um pedido cujo produto saiu de linha
+        depois — a exigência de `ativo` vale só pra item novo."""
+        pedido = _criar_pedido_direto(db_session)
+        produto = db_session.get(Produto, pedido.itens[0].produto_id)
+        produto.ativo = False
+        db_session.commit()
+
+        atualizado = pedidos_service.editar_pedido(
+            db_session, pedido.id,
+            _update(pedido, entrega=datetime(2026, 1, 18, 10, 0)),
+            usuario=operador, agora=self.AGORA,
+        )
+
+        assert atualizado.data_entrega == date(2026, 1, 18)
+        assert atualizado.itens[0].produto_id == produto.id
 
     def test_adicionar_item_personalizavel_reseta_o_sinal(self, db_session, operador):
         pedido = _criar_pedido_direto(

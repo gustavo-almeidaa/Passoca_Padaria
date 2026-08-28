@@ -304,8 +304,15 @@ implementar, não são RF confirmados):**
   (90 dias) a partir de agora; se a composição de itens personalizáveis
   mudar, `sinal_confirmado` volta a `false`; itens que já estavam no
   pedido mantêm o preço travado, itens novos pegam o preço atual do
-  cardápio. Entra na trilha de auditoria (ação `editar`). Frontend fica
-  pro Incremento 23.1.
+  cardápio. Entra na trilha de auditoria (ação `editar`).
+- ~~Frontend da edição de pedido~~ — **feito em 2026-08-27 (Incremento
+  23.1)**. Botão "Editar" no ticket (só `recebido`, só
+  proprietária/atendente) abre um painel inline com data/hora + itens
+  (mudar quantidade, remover, adicionar). Dois ajustes descobertos ao
+  fazer a UI: (1) um item que **já estava** no pedido segue válido mesmo
+  se o produto foi desativado depois — senão não dava pra só remarcar a
+  data; (2) `ui.js::mostrarFeedback` não apaga mais a classe do elemento
+  de feedback (bug latente: quebrava o 2º erro seguido no mesmo ticket).
 - Histórico de pedidos por cliente.
 - ~~Trilha de auditoria de operações sensíveis~~ — **feito em 2026-08-27
   (Incremento 18, auditoria A-01)**: tabela `eventos_auditoria` registra
