@@ -89,6 +89,11 @@ Incrementos recentes:
   (só `recebido`, só proprietária/atendente) abre um painel inline com
   data/hora + itens. Um item que já estava no pedido segue válido mesmo
   se o produto saiu de linha depois.
+- **24 — Histórico de pedidos por cliente** (2026-08-28):
+  `GET /clientes/{id}/pedidos` lista todos os pedidos do cliente (inclusive
+  cancelados), do mais recente pro mais antigo. Na aba Clientes, o botão
+  "pedidos" em cada cliente abre um painel com o histórico + resumo
+  (nº de pedidos e total já encomendado, só os não cancelados).
 
 O sistema passou a depender de internet, já que o banco agora é gerenciado
 na nuvem (decisão registrada: funcionar offline não é requisito do MVP).
@@ -193,10 +198,11 @@ uvicorn app.main:app --reload      # sobe a API + frontend em http://127.0.0.1:8
 
 Isso cria o schema completo (`clientes`, `produtos`, `pedidos`,
 `itens_pedido`, `usuarios`, `tentativas_login`, `eventos_auditoria`) no
-banco Postgres do Neon e roda os 205 testes automatizados (schema + API +
+banco Postgres do Neon e roda os 210 testes automatizados (schema + API +
 services + autenticação + limite de tentativas + trilha de auditoria +
-matriz de permissão + desempenho + edição de pedido — cada teste usa um
-SQLite em memória isolado, não toca no Neon). No primeiro
+matriz de permissão + desempenho + edição de pedido + histórico por
+cliente — cada teste usa um SQLite em memória isolado, não toca no Neon).
+No primeiro
 boot, se `ADMIN_EMAIL`/`ADMIN_SENHA` estiverem configurados e o banco não
 tiver nenhum usuário, a conta da proprietária é criada automaticamente.
 Com o servidor no ar: o sistema fica em `http://127.0.0.1:8000/` — pede
@@ -300,6 +306,7 @@ tem acesso à operação, retornam `403` (Incremento 19 — ver coluna
 | `POST` | `/clientes` | Cadastrar cliente (RF01) — **proprietária/atendente** |
 | `GET` | `/clientes` | Listar clientes — qualquer perfil |
 | `GET` | `/clientes/{id}` | Consultar um cliente — qualquer perfil |
+| `GET` | `/clientes/{id}/pedidos` | Histórico de pedidos do cliente (Incremento 24) — qualquer perfil |
 | `POST` | `/produtos` | Cadastrar produto (RF02) — **proprietária/atendente** |
 | `GET` | `/produtos?ativo=true` | Listar produtos (filtro opcional por ativo) — qualquer perfil |
 | `GET` | `/produtos/{id}` | Consultar um produto — qualquer perfil |
