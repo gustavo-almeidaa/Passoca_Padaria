@@ -1,32 +1,39 @@
 /*
  * Controlador de abas — Incremento 9.
  *
- * Unifica as telas (Clientes, Produtos, Novo Pedido, Pedidos, Usuários) em
- * uma única página: troca a seção visível sem recarregar e avisa o script
- * de cada tela via evento customizado `tela:ativada`, para recarregar
- * dados que podem ter mudado em outra aba (ex.: cliente cadastrado
- * enquanto o atendente já estava com a aba "Novo Pedido" aberta).
+ * Troca a seção visível sem recarregar e avisa o script de cada tela via
+ * evento `tela:ativada`, para recarregar dados que podem ter mudado em
+ * outra aba.
  *
- * Incremento 12: nenhuma tela carrega dado nenhum sozinha no
- * DOMContentLoaded mais — todas exigem login agora, então a primeira carga
- * só acontece quando auth.js confirma a sessão e chama
- * `window.ativarTela("clientes")` (ver frontend/js/auth.js).
+ * Incremento 12: as telas não carregam nada sozinhas — a primeira carga só
+ * acontece quando auth.js confirma a sessão e chama `ativarTela(...)`.
+ *
+ * Incremento 25: `ativarTela` re-consulta o DOM a cada chamada e recusa
+ * navegar para uma aba que não existe — auth.js remove do DOM as abas que
+ * o perfil não pode acessar, então pedir por uma delas cai na primeira
+ * aba disponível, não numa tela vazia.
  */
 document.addEventListener("DOMContentLoaded", () => {
-  const tabs = document.querySelectorAll("[data-tab-alvo]");
-  const secoes = document.querySelectorAll("[data-secao]");
+  function ativarTela(nome) {
+    const tabs = [...document.querySelectorAll("[data-tab-alvo]")];
+    const secoes = [...document.querySelectorAll("[data-secao]")];
+    if (tabs.length === 0) return;
 
-  tabs.forEach((tab) => {
+    const existe = tabs.some((t) => t.dataset.tabAlvo === nome);
+    const alvo = existe ? nome : tabs[0].dataset.tabAlvo;
+
+    tabs.forEach((t) => t.classList.toggle("active", t.dataset.tabAlvo === alvo));
+    secoes.forEach((secao) => {
+      secao.hidden = secao.dataset.secao !== alvo;
+    });
+    document.dispatchEvent(
+      new CustomEvent("tela:ativada", { detail: { tela: alvo } })
+    );
+  }
+
+  document.querySelectorAll("[data-tab-alvo]").forEach((tab) => {
     tab.addEventListener("click", () => ativarTela(tab.dataset.tabAlvo));
   });
-
-  function ativarTela(nome) {
-    tabs.forEach((t) => t.classList.toggle("active", t.dataset.tabAlvo === nome));
-    secoes.forEach((secao) => {
-      secao.hidden = secao.dataset.secao !== nome;
-    });
-    document.dispatchEvent(new CustomEvent("tela:ativada", { detail: { tela: nome } }));
-  }
 
   window.ativarTela = ativarTela;
 });

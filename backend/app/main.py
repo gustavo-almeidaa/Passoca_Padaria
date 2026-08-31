@@ -13,7 +13,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 
@@ -160,7 +160,12 @@ async def sem_cache_agressivo_no_frontend(request: Request, call_next):
     arquivo raramente muda, então a resposta normal é um 304 barato, mas
     nunca fica servindo uma versão desatualizada silenciosamente."""
     resposta = await call_next(request)
-    if request.url.path.startswith(("/js/", "/css/")):
+    if request.url.path.startswith(("/js/", "/css/")) or request.url.path in (
+        "/",
+        "/login",
+        "/index.html",
+        "/login.html",
+    ):
         resposta.headers["Cache-Control"] = "no-cache"
     return resposta
 
@@ -169,6 +174,14 @@ async def sem_cache_agressivo_no_frontend(request: Request, call_next):
 def health_check() -> dict[str, str]:
     """Verificação simples de que a API está no ar."""
     return {"status": "ok"}
+
+
+@app.get("/login", include_in_schema=False)
+def pagina_login() -> FileResponse:
+    """Serve a tela de login (Incremento 25 — página separada do app). O
+    `StaticFiles` já serviria `/login.html`; esta rota dá a URL limpa
+    `/login`. Declarada antes do mount de `/` para ter prioridade."""
+    return FileResponse(FRONTEND_DIR / "login.html")
 
 
 # Frontend estático (HTML/CSS/JS puro, CLAUDE.md seção 11) servido pelo

@@ -1,20 +1,13 @@
 /*
- * Autenticação — Incremento 12.
+ * Sessão do app — Incrementos 12 e 25.
  *
- * Controla o "gate" da página: enquanto não confirma sessão válida
- * (GET /auth/me), mostra só a tela de login e mantém o resto do app
- * (#app-shell) escondido. Depois de confirmar (login novo ou sessão já
- * existente), revela o app e dispara a primeira ativação de aba — as
- * telas em si não carregam nada sozinhas mais (ver app.js).
+ * Incremento 25: login virou página própria (login.html). Aqui o app só
+ * confirma que existe sessão (GET /auth/me); se não existe, redireciona
+ * para /login. Sem sessão, o app nunca aparece.
  */
 document.addEventListener("DOMContentLoaded", () => {
-  const telaLogin = document.getElementById("tela-login");
+  const telaCarregando = document.getElementById("tela-carregando");
   const appShell = document.getElementById("app-shell");
-  const formLogin = document.getElementById("form-login");
-  const feedback = document.getElementById("feedback-login");
-  const botaoEntrar = document.getElementById("botao-entrar");
-  const inputEmail = document.getElementById("lg-email");
-  const inputSenha = document.getElementById("lg-senha");
   const usuarioInfo = document.getElementById("usuario-info");
   const botaoSair = document.getElementById("botao-sair");
 
@@ -31,97 +24,81 @@ document.addEventListener("DOMContentLoaded", () => {
       const usuario = await api.me();
       mostrarApp(usuario);
     } catch (_erro) {
-      // Sem sessão válida — comportamento normal ao abrir a página sem
-      // estar logado, não é um erro pra mostrar feedback nenhum aqui.
-      mostrarLogin();
+      irParaLogin();
     }
   }
 
+  function irParaLogin() {
+    window.usuarioAtual = null;
+    window.location.replace("/login");
+  }
+
   function mostrarApp(usuario) {
-    telaLogin.hidden = true;
-    appShell.hidden = false;
-    // Outras telas (usuarios.js) usam isso pra saber quem está logado —
-    // ex.: não oferecer o botão "Desativar" na própria linha da lista.
     window.usuarioAtual = usuario;
+    aplicarPermissoes(usuario.perfil);
+
     const perfil = ROTULOS_PERFIL[usuario.perfil] || usuario.perfil;
     usuarioInfo.textContent = `Olá, ${usuario.nome} (${perfil})`;
 
-    aplicarPermissoes(usuario.perfil);
+    telaCarregando.hidden = true;
+    appShell.hidden = false;
 
     if (window.ativarTela) window.ativarTela("clientes");
   }
 
-  function mostrarLogin() {
-    appShell.hidden = true;
-    telaLogin.hidden = false;
-    window.usuarioAtual = null;
-  }
-
   /*
-   * Gate de permissão no frontend — Incrementos 15, 18 e 20. Espelha a
-   * matriz que o backend aplica em api/deps.py::exigir_perfis (A-03): NÃO
-   * é controle de segurança (o backend é), é só não oferecer um botão que
-   * ia dar 403 na cara de quem não pode usar.
+   * Gate de permissão no frontend — Incrementos 15/18/20, endurecido no 25.
+   * Espelha a matriz do backend (api/deps.py::exigir_perfis, A-03). NÃO é
+   * controle de segurança (o backend é) — é remover da tela o que o perfil
+   * não pode usar, pra não haver caminho até um botão que daria 403.
    *
-   *  - proprietária: vê tudo.
-   *  - atendente: vê tudo, menos "Usuários" e "Auditoria".
-   *  - padeiro: só leitura + avançar status. Não vê "Novo Pedido", nem os
-   *    formulários de cadastro de cliente/produto (as listas continuam),
-   *    nem os botões "Confirmar sinal"/"Cancelar" nos pedidos
-   *    (ver frontend/js/lista-pedidos.js).
+   * Incremento 25: em vez de só esconder (`hidden`), **remove do DOM** as
+   * abas/seções e formulários que o perfil não acessa. Não sobra tela
+   * fantasma pra alcançar por devtools ou por `ativarTela(...)`.
+   *
+   *  - proprietária: tudo.
+   *  - atendente: tudo, menos "Usuários" e "Auditoria".
+   *  - padeiro: só leitura + avançar status. Sem "Novo Pedido",
+   *    "Usuários", "Auditoria", nem os formulários de cadastro de
+   *    cliente/produto (as listas continuam).
    */
   function aplicarPermissoes(perfil) {
-    const soProprietaria = perfil !== "proprietaria";
-    const ehPadeiro = perfil === "padeiro";
+    const removidos = [];
 
-    esconder('[data-tab-alvo="usuarios"]', soProprietaria);
-    esconder('[data-tab-alvo="auditoria"]', soProprietaria);
+    if (perfil !== "proprietaria") {
+      removidos.push("usuarios", "auditoria");
+    }
+    if (perfil === "padeiro") {
+      removidos.push("pedido");
+    }
 
-    esconder('[data-tab-alvo="pedido"]', ehPadeiro);
-    esconder("#card-cadastro-cliente", ehPadeiro);
-    esconder("#card-cadastro-produto", ehPadeiro);
+    removidos.forEach((nome) => {
+      remover(`[data-tab-alvo="${nome}"]`);
+      remover(`[data-secao="${nome}"]`);
+    });
+
+    if (perfil === "padeiro") {
+      remover("#card-cadastro-cliente");
+      remover("#card-cadastro-produto");
+    }
   }
 
-  function esconder(seletor, escondido) {
+  function remover(seletor) {
     const el = document.querySelector(seletor);
-    if (el) el.hidden = escondido;
+    if (el) el.remove();
   }
-
-  formLogin.addEventListener("submit", async (evento) => {
-    evento.preventDefault();
-    limparFeedback(feedback);
-
-    const email = inputEmail.value.trim();
-    const senha = inputSenha.value;
-    if (!email || !senha) {
-      mostrarFeedback(feedback, "Preencha e-mail e senha.", "erro");
-      return;
-    }
-
-    definirCarregando(botaoEntrar, true, "Entrando...");
-    try {
-      const usuario = await api.login(email, senha);
-      formLogin.reset();
-      mostrarApp(usuario);
-    } catch (erro) {
-      mostrarFeedback(feedback, erro.message, "erro");
-    } finally {
-      definirCarregando(botaoEntrar, false);
-    }
-  });
 
   botaoSair.addEventListener("click", async () => {
     try {
       await api.logout();
     } catch (_erro) {
-      // Mesmo se der erro de rede no logout, ainda assim volta pra tela de
-      // login — não faz sentido deixar o atendente preso na tela travada.
+      // Erro de rede no logout não deve prender o usuário — vai pro login
+      // do mesmo jeito.
     }
-    mostrarLogin();
+    irParaLogin();
   });
 
-  // Disparado pelo api.js quando qualquer chamada volta 401 (sessão
-  // expirou no meio do uso, por exemplo). Idempotente com o catch acima —
-  // não tem problema rodar mais de uma vez.
-  document.addEventListener("auth:necessaria", mostrarLogin);
+  // api.js dispara isso quando qualquer chamada volta 401 (sessão expirou
+  // no meio do uso).
+  document.addEventListener("auth:necessaria", irParaLogin);
 });

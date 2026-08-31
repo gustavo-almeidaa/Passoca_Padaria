@@ -94,6 +94,11 @@ Incrementos recentes:
   cancelados), do mais recente pro mais antigo. Na aba Clientes, o botão
   "pedidos" em cada cliente abre um painel com o histórico + resumo
   (nº de pedidos e total já encomendado, só os não cancelados).
+- **25 — Tela de login separada** (2026-08-28): `login.html` virou página
+  própria (rota `/login`), fora do `index.html`. O app confirma a sessão
+  e redireciona pra `/login` se não houver — sem sessão o app não
+  renderiza. E o gate de permissão passou a **remover do DOM** as abas
+  que o perfil não acessa (antes só escondia).
 
 O sistema passou a depender de internet, já que o banco agora é gerenciado
 na nuvem (decisão registrada: funcionar offline não é requisito do MVP).
@@ -121,12 +126,14 @@ Passoca_Padaria/
 │   ├── requirements.txt
 │   └── requirements-dev.txt
 ├── frontend/
-│   ├── index.html         # página única — tela de login + 6 seções (Clientes,
-│   │                       # Produtos, Novo Pedido, Pedidos, Usuários, Auditoria)
-│   │                       # trocadas via JS, sem reload
+│   ├── login.html         # tela de login (página própria — rota /login)
+│   ├── index.html         # o app — 6 seções (Clientes, Produtos, Novo Pedido,
+│   │                       # Pedidos, Usuários, Auditoria) trocadas via JS, sem
+│   │                       # reload; só renderiza com sessão válida
 │   ├── css/style.css      # estilo compartilhado entre as seções
 │   └── js/                # api.js (cliente HTTP), ui.js (feedback visual),
-│                           # app.js (controlador de abas), auth.js (login/logout
+│                           # login-page.js (form da tela de login),
+│                           # app.js (controlador de abas), auth.js (sessão/logout
 │                           # + gate de permissão por perfil), cadastro-cliente.js,
 │                           # cadastro-produto.js, novo-pedido.js, lista-pedidos.js,
 │                           # usuarios.js, auditoria.js
@@ -198,7 +205,7 @@ uvicorn app.main:app --reload      # sobe a API + frontend em http://127.0.0.1:8
 
 Isso cria o schema completo (`clientes`, `produtos`, `pedidos`,
 `itens_pedido`, `usuarios`, `tentativas_login`, `eventos_auditoria`) no
-banco Postgres do Neon e roda os 210 testes automatizados (schema + API +
+banco Postgres do Neon e roda os 211 testes automatizados (schema + API +
 services + autenticação + limite de tentativas + trilha de auditoria +
 matriz de permissão + desempenho + edição de pedido + histórico por
 cliente — cada teste usa um SQLite em memória isolado, não toca no Neon).

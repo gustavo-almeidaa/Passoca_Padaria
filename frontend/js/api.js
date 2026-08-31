@@ -69,10 +69,9 @@ async function apiFetch(caminho, opcoes = {}) {
 
   if (!resposta.ok) {
     if (resposta.status === 401) {
-      // Sessão ausente/expirada — avisa a tela de login pra assumir,
-      // independente de qual chamada disparou isso (CLAUDE.md, seção 1.6:
-      // feedback imediato de cada ação, sem deixar o atendente preso numa
-      // tela travada esperando uma requisição que nunca vai funcionar).
+      // Sessão ausente/expirada — auth.js escuta isto e redireciona pra
+      // /login (Incremento 25). Não deixa o usuário preso numa tela
+      // esperando uma requisição que nunca vai funcionar.
       document.dispatchEvent(new CustomEvent("auth:necessaria"));
     }
     let mensagem = extrairMensagemErro(corpo);

@@ -296,7 +296,16 @@ implementar, não são RF confirmados):**
     decisão do usuário), pedido (registrar, confirmar sinal, avançar,
     cancelar). Não acessa Usuários nem Auditoria.
   - **proprietária** — tudo.
-  Gate no frontend (esconder botão sem permissão): **feito no Incremento 20**.
+  Gate no frontend (esconder botão sem permissão): **feito no Incremento 20**;
+  **endurecido no Incremento 25** — as abas/seções que o perfil não pode
+  acessar são **removidas do DOM** (não só escondidas), e `ativarTela`
+  recusa navegar pra uma aba inexistente (cai na 1ª disponível).
+- ~~Tela de login separada do app~~ — **feita no Incremento 25**
+  (2026-08-28). Antes login e app dividiam o `index.html` (dava confusão
+  depois do login). Agora `login.html` é página própria (rota `/login`);
+  o app confirma a sessão via `GET /auth/me` e redireciona pra `/login`
+  se não houver — sem sessão, o app nunca renderiza. Logout também
+  redireciona.
 - ~~Edição de pedido já criado~~ — **feito em 2026-08-27 (Incremento 23)**.
   `PUT /pedidos/{id}` (proprietária/atendente), edita itens e/ou data de
   entrega — **não** o cliente. Regras (decisões do usuário): só edita
@@ -341,9 +350,13 @@ implementar, não são RF confirmados):**
   de 15 min; 5–9 falhas geram atraso progressivo, 10+ retornam `429`. A
   **conta nunca trava** — só o IP (decisão do usuário: um ataque remoto não
   pode trancar a proprietária para fora). Ver `app/services/rate_limit.py`.
-- Recuperação de senha (esqueci minha senha, sem estar logado) — ainda não
-  existe. Continua backlog: hoje só a proprietária reseta senha, e sem
-  fluxo de e-mail.
+- Recuperação de senha (esqueci minha senha, sem estar logado) — **ideia
+  arquivada em 2026-08-28** (decisão do usuário). Exige infra de envio de
+  e-mail (serviço tipo Resend ou SMTP), que o sistema não tem. Enquanto
+  isso: a proprietária reseta a senha de quem esquece, pela aba Usuários
+  (recriar a conta) — aceito como suficiente por ora. Retomar se/quando o
+  volume de esquecimento incomodar, ou se o sistema for exposto a cliente
+  final (aí vira requisito, ver nota de intenção futura na seção 4).
 
 ## 6. Requisitos não funcionais (RNF)
 
