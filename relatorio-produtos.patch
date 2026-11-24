@@ -1,0 +1,481 @@
+diff --git a/backend/app/api/relatorios.py b/backend/app/api/relatorios.py
+new file mode 100644
+index 0000000..62eca13
+--- /dev/null
++++ b/backend/app/api/relatorios.py
+@@ -0,0 +1,106 @@
++"""Relatório avançado — produtos mais encomendados e faturamento por período.
++
++Projeto Final de Engenharia de Software. Só a proprietária consulta (dado
++financeiro, mesma decisão da aba Auditoria). Pedidos cancelados ficam de
++fora, a mesma regra do resumo do histórico por cliente (Incremento 24).
++O período filtra pela data de ENTREGA do pedido, igual à listagem de
++pedidos (RF07).
++"""
++from __future__ import annotations
++
++from datetime import date
++from decimal import Decimal
++from typing import Optional
++
++from fastapi import APIRouter, Depends, HTTPException, Query, status
++from sqlalchemy import func
++from sqlalchemy.orm import Session
++
++from app.api.deps import exigir_proprietaria
++from app.core.database import get_db
++from app.models.item_pedido import ItemPedido
++from app.models.pedido import Pedido, StatusPedido
++from app.models.produto import Produto
++from app.schemas.relatorio import ProdutoRankingItem, RelatorioProdutosRead
++
++router = APIRouter(
++    prefix="/relatorios",
++    tags=["relatorios"],
++    dependencies=[Depends(exigir_proprietaria)],
++)
++
++LIMITE_PADRAO = 20
++LIMITE_MAXIMO = 100
++
++
++@router.get("/produtos-mais-encomendados", response_model=RelatorioProdutosRead)
++def produtos_mais_encomendados(
++    db: Session = Depends(get_db),
++    data_inicio: Optional[date] = Query(
++        default=None, description="Entregas a partir desta data (inclusive)."
++    ),
++    data_fim: Optional[date] = Query(
++        default=None, description="Entregas até esta data (inclusive)."
++    ),
++    limite: int = Query(default=LIMITE_PADRAO, ge=1, le=LIMITE_MAXIMO),
++) -> RelatorioProdutosRead:
++    if data_inicio and data_fim and data_inicio > data_fim:
++        raise HTTPException(
++            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
++            detail="A data inicial não pode ser depois da data final.",
++        )
++
++    filtros = [Pedido.status != StatusPedido.CANCELADO]
++    if data_inicio is not None:
++        filtros.append(Pedido.data_entrega >= data_inicio)
++    if data_fim is not None:
++        filtros.append(Pedido.data_entrega <= data_fim)
++
++    valor_item = ItemPedido.quantidade * ItemPedido.preco_unitario
++    linhas = (
++        db.query(
++            Produto.id,
++            Produto.nome,
++            Produto.categoria,
++            func.sum(ItemPedido.quantidade).label("quantidade_total"),
++            func.count(func.distinct(ItemPedido.pedido_id)).label("pedidos"),
++            func.sum(valor_item).label("faturamento"),
++        )
++        .join(ItemPedido, ItemPedido.produto_id == Produto.id)
++        .join(Pedido, Pedido.id == ItemPedido.pedido_id)
++        .filter(*filtros)
++        .group_by(Produto.id, Produto.nome, Produto.categoria)
++        .order_by(func.sum(valor_item).desc(), Produto.nome)
++        .limit(limite)
++        .all()
++    )
++
++    # Totais do período inteiro (não só do top N).
++    total_pedidos, faturamento_total = (
++        db.query(
++            func.count(func.distinct(Pedido.id)),
++            func.coalesce(func.sum(valor_item), 0),
++        )
++        .select_from(Pedido)
++        .join(ItemPedido, ItemPedido.pedido_id == Pedido.id)
++        .filter(*filtros)
++        .one()
++    )
++
++    return RelatorioProdutosRead(
++        data_inicio=data_inicio,
++        data_fim=data_fim,
++        total_pedidos=total_pedidos or 0,
++        faturamento_total=Decimal(faturamento_total or 0),
++        produtos=[
++            ProdutoRankingItem(
++                produto_id=linha.id,
++                nome=linha.nome,
++                categoria=linha.categoria.value,
++                quantidade_total=int(linha.quantidade_total),
++                pedidos=int(linha.pedidos),
++                faturamento=Decimal(linha.faturamento),
++            )
++            for linha in linhas
++        ],
++    )
+diff --git a/backend/app/main.py b/backend/app/main.py
+index cab5368..e5db073 100644
+--- a/backend/app/main.py
++++ b/backend/app/main.py
+@@ -17,7 +17,7 @@ from fastapi.responses import FileResponse, JSONResponse
+ from fastapi.staticfiles import StaticFiles
+ from starlette.middleware.sessions import SessionMiddleware
+ 
+-from app.api import auditoria, auth, clientes, pedidos, produtos
++from app.api import auditoria, auth, clientes, pedidos, produtos, relatorios
+ from app.core.config import settings
+ from app.core.database import SessionLocal
+ from app.core.security import hash_senha
+@@ -118,6 +118,7 @@ app.include_router(clientes.router)
+ app.include_router(produtos.router)
+ app.include_router(pedidos.router)
+ app.include_router(auditoria.router)
++app.include_router(relatorios.router)
+ 
+ 
+ @app.middleware("http")
+diff --git a/backend/app/schemas/relatorio.py b/backend/app/schemas/relatorio.py
+new file mode 100644
+index 0000000..77749c7
+--- /dev/null
++++ b/backend/app/schemas/relatorio.py
+@@ -0,0 +1,25 @@
++"""Schemas do relatório de produtos mais encomendados (Projeto Final)."""
++from __future__ import annotations
++
++from datetime import date
++from decimal import Decimal
++from typing import Optional
++
++from pydantic import BaseModel
++
++
++class ProdutoRankingItem(BaseModel):
++    produto_id: int
++    nome: str
++    categoria: str
++    quantidade_total: int
++    pedidos: int
++    faturamento: Decimal
++
++
++class RelatorioProdutosRead(BaseModel):
++    data_inicio: Optional[date]
++    data_fim: Optional[date]
++    total_pedidos: int
++    faturamento_total: Decimal
++    produtos: list[ProdutoRankingItem]
+diff --git a/backend/tests/test_api_relatorios.py b/backend/tests/test_api_relatorios.py
+new file mode 100644
+index 0000000..c5e88cf
+--- /dev/null
++++ b/backend/tests/test_api_relatorios.py
+@@ -0,0 +1,130 @@
++"""Testes do relatório de produtos mais encomendados (Projeto Final).
++
++Cobre: ranking por faturamento, exclusão de cancelados, filtro por período,
++período inválido, relatório vazio e acesso restrito à proprietária.
++"""
++from datetime import datetime, timedelta
++
++from app.api.deps import get_usuario_atual
++from app.core.security import hash_senha
++from app.main import app
++from app.models.usuario import PerfilUsuario, Usuario
++
++
++def _entrega(dias=3):
++    m = datetime.now() + timedelta(days=dias)
++    return m.date().isoformat(), m.time().replace(microsecond=0).isoformat()
++
++
++def _cliente(client):
++    return client.post(
++        "/clientes", json={"nome": "Maria", "telefone": "43999990000"}
++    ).json()["id"]
++
++
++def _produto(client, nome, preco):
++    return client.post(
++        "/produtos",
++        json={
++            "nome": nome,
++            "categoria": "pao",
++            "unidade": "unidade",
++            "preco": preco,
++            "personalizavel": False,
++        },
++    ).json()["id"]
++
++
++def _pedido(client, cid, itens, dias=3):
++    data, hora = _entrega(dias)
++    r = client.post(
++        "/pedidos",
++        json={
++            "cliente_id": cid,
++            "data_entrega": data,
++            "hora_entrega": hora,
++            "itens": [{"produto_id": p, "quantidade": q} for p, q in itens],
++        },
++    )
++    assert r.status_code == 201, r.text
++    return r.json()["id"]
++
++
++def test_ranking_ordenado_por_faturamento(client):
++    cid = _cliente(client)
++    pao = _produto(client, "Pão", "2.00")
++    bolo = _produto(client, "Bolo", "40.00")
++    _pedido(client, cid, [(pao, 10), (bolo, 1)])  # pão 20, bolo 40
++    _pedido(client, cid, [(pao, 5)])  # pão +10
++
++    corpo = client.get("/relatorios/produtos-mais-encomendados").json()
++
++    assert [p["nome"] for p in corpo["produtos"]] == ["Bolo", "Pão"]
++    assert corpo["produtos"][0]["faturamento"] == "40.00"
++    assert corpo["produtos"][1]["quantidade_total"] == 15
++    assert corpo["produtos"][1]["pedidos"] == 2
++    assert corpo["faturamento_total"] == "70.00"
++    assert corpo["total_pedidos"] == 2
++
++
++def test_pedido_cancelado_fica_de_fora(client):
++    cid = _cliente(client)
++    pao = _produto(client, "Pão", "2.00")
++    _pedido(client, cid, [(pao, 10)])
++    cancelado = _pedido(client, cid, [(pao, 100)], dias=5)
++    assert client.post(f"/pedidos/{cancelado}/cancelar").status_code == 200
++
++    corpo = client.get("/relatorios/produtos-mais-encomendados").json()
++
++    assert corpo["produtos"][0]["quantidade_total"] == 10
++    assert corpo["faturamento_total"] == "20.00"
++    assert corpo["total_pedidos"] == 1
++
++
++def test_filtro_por_periodo(client):
++    cid = _cliente(client)
++    pao = _produto(client, "Pão", "2.00")
++    _pedido(client, cid, [(pao, 10)], dias=3)
++    _pedido(client, cid, [(pao, 50)], dias=20)
++    corte = (datetime.now() + timedelta(days=10)).date().isoformat()
++
++    antes = client.get(
++        "/relatorios/produtos-mais-encomendados", params={"data_fim": corte}
++    ).json()
++    depois = client.get(
++        "/relatorios/produtos-mais-encomendados", params={"data_inicio": corte}
++    ).json()
++
++    assert antes["produtos"][0]["quantidade_total"] == 10
++    assert depois["produtos"][0]["quantidade_total"] == 50
++
++
++def test_periodo_invertido_retorna_422(client):
++    r = client.get(
++        "/relatorios/produtos-mais-encomendados",
++        params={"data_inicio": "2026-12-31", "data_fim": "2026-01-01"},
++    )
++    assert r.status_code == 422
++
++
++def test_relatorio_vazio(client):
++    corpo = client.get("/relatorios/produtos-mais-encomendados").json()
++    assert corpo["produtos"] == []
++    assert corpo["faturamento_total"] == "0"
++    assert corpo["total_pedidos"] == 0
++
++
++def test_so_proprietaria_acessa(client, db_session):
++    atendente = Usuario(
++        nome="Atendente",
++        email="atendente@passoca.com",
++        senha_hash=hash_senha("senha-de-teste-123"),
++        perfil=PerfilUsuario.ATENDENTE,
++    )
++    db_session.add(atendente)
++    db_session.commit()
++    app.dependency_overrides[get_usuario_atual] = lambda: atendente
++
++    r = client.get("/relatorios/produtos-mais-encomendados")
++
++    assert r.status_code == 403
+diff --git a/frontend/index.html b/frontend/index.html
+index 1aad31c..a276796 100644
+--- a/frontend/index.html
++++ b/frontend/index.html
+@@ -29,6 +29,7 @@
+     <button type="button" class="tab" data-tab-alvo="pedidos">Pedidos</button>
+     <button type="button" class="tab" data-tab-alvo="usuarios">Usuários</button>
+     <button type="button" class="tab" data-tab-alvo="auditoria" hidden>Auditoria</button>
++    <button type="button" class="tab" data-tab-alvo="relatorio">Relatório</button>
+   </nav>
+ </header>
+ 
+@@ -289,6 +290,36 @@
+       <div id="lista-auditoria" class="produto-list"></div>
+     </div>
+   </section>
++
++  <section data-secao="relatorio" hidden>
++    <div class="card">
++      <h2>Produtos mais encomendados</h2>
++      <p class="sub">
++        Ranking por faturamento no período (data de entrega). Pedidos
++        cancelados não entram.
++      </p>
++
++      <form id="form-relatorio" novalidate>
++        <div class="row">
++          <div>
++            <label for="r-data-inicio">De <span class="opcional">(opcional)</span></label>
++            <input id="r-data-inicio" type="date">
++          </div>
++          <div>
++            <label for="r-data-fim">Até <span class="opcional">(opcional)</span></label>
++            <input id="r-data-fim" type="date">
++          </div>
++        </div>
++        <button type="submit" class="action" id="botao-gerar-relatorio">Gerar relatório</button>
++        <p id="feedback-relatorio" class="feedback" role="status" hidden></p>
++      </form>
++    </div>
++
++    <div class="card">
++      <div id="resumo-relatorio" class="sub"></div>
++      <div id="lista-relatorio" class="produto-list"></div>
++    </div>
++  </section>
+ </main>
+ 
+ <footer>Padaria do Passoca — sistema de encomendas</footer>
+@@ -305,5 +336,6 @@
+ <script src="/js/lista-pedidos.js"></script>
+ <script src="/js/usuarios.js"></script>
+ <script src="/js/auditoria.js"></script>
++<script src="/js/relatorio.js"></script>
+ </body>
+ </html>
+diff --git a/frontend/js/api.js b/frontend/js/api.js
+index 8fb05dd..ce6f504 100644
+--- a/frontend/js/api.js
++++ b/frontend/js/api.js
+@@ -131,6 +131,13 @@ const api = {
+     const query = params.toString();
+     return apiFetch(`/auditoria${query ? `?${query}` : ""}`);
+   },
++  relatorioProdutos: (opcoes = {}) => {
++    const params = new URLSearchParams();
++    if (opcoes.data_inicio) params.set("data_inicio", opcoes.data_inicio);
++    if (opcoes.data_fim) params.set("data_fim", opcoes.data_fim);
++    const query = params.toString();
++    return apiFetch(`/relatorios/produtos-mais-encomendados${query ? `?${query}` : ""}`);
++  },
+   listarUsuarios: () => apiFetch("/auth/usuarios"),
+   criarUsuario: (dados) =>
+     apiFetch("/auth/usuarios", { method: "POST", body: JSON.stringify(dados) }),
+diff --git a/frontend/js/auth.js b/frontend/js/auth.js
+index f2fb2fe..c2c9737 100644
+--- a/frontend/js/auth.js
++++ b/frontend/js/auth.js
+@@ -57,7 +57,7 @@ document.addEventListener("DOMContentLoaded", () => {
+    * fantasma pra alcançar por devtools ou por `ativarTela(...)`.
+    *
+    *  - proprietária: tudo.
+-   *  - atendente: tudo, menos "Usuários" e "Auditoria".
++   *  - atendente: tudo, menos "Usuários", "Auditoria" e "Relatório".
+    *  - padeiro: só leitura + avançar status. Sem "Novo Pedido",
+    *    "Usuários", "Auditoria", nem os formulários de cadastro de
+    *    cliente/produto (as listas continuam).
+@@ -66,7 +66,7 @@ document.addEventListener("DOMContentLoaded", () => {
+     const removidos = [];
+ 
+     if (perfil !== "proprietaria") {
+-      removidos.push("usuarios", "auditoria");
++      removidos.push("usuarios", "auditoria", "relatorio");
+     }
+     if (perfil === "padeiro") {
+       removidos.push("pedido");
+diff --git a/frontend/js/relatorio.js b/frontend/js/relatorio.js
+new file mode 100644
+index 0000000..ca01321
+--- /dev/null
++++ b/frontend/js/relatorio.js
+@@ -0,0 +1,79 @@
++/*
++ * Tela de Relatório — Projeto Final de Engenharia de Software.
++ *
++ * Ranking de produtos mais encomendados + faturamento por período, a partir
++ * de GET /relatorios/produtos-mais-encomendados (só proprietária — o
++ * auth.js remove a aba dos outros perfis e o backend responde 403).
++ */
++document.addEventListener("DOMContentLoaded", () => {
++  const form = document.getElementById("form-relatorio");
++  if (!form) return; // perfil sem acesso: seção removida pelo auth.js
++
++  const inputInicio = document.getElementById("r-data-inicio");
++  const inputFim = document.getElementById("r-data-fim");
++  const botao = document.getElementById("botao-gerar-relatorio");
++  const feedback = document.getElementById("feedback-relatorio");
++  const resumo = document.getElementById("resumo-relatorio");
++  const lista = document.getElementById("lista-relatorio");
++
++  document.addEventListener("tela:ativada", (evento) => {
++    if (evento.detail.tela === "relatorio") gerar();
++  });
++
++  form.addEventListener("submit", (evento) => {
++    evento.preventDefault();
++    gerar();
++  });
++
++  async function gerar() {
++    limparFeedback(feedback);
++    if (inputInicio.value && inputFim.value && inputInicio.value > inputFim.value) {
++      mostrarFeedback(feedback, "A data inicial não pode ser depois da final.", "erro");
++      return;
++    }
++    definirCarregando(botao, true, "Gerando...");
++    lista.innerHTML = '<p class="empty">Carregando…</p>';
++    try {
++      const dados = await api.relatorioProdutos({
++        data_inicio: inputInicio.value || undefined,
++        data_fim: inputFim.value || undefined,
++      });
++      render(dados);
++    } catch (erro) {
++      resumo.innerHTML = "";
++      lista.innerHTML = "";
++      mostrarFeedback(feedback, erro.message, "erro");
++    } finally {
++      definirCarregando(botao, false);
++    }
++  }
++
++  function render(dados) {
++    if (dados.produtos.length === 0) {
++      resumo.innerHTML = "";
++      lista.innerHTML = '<p class="empty">Nenhum pedido nesse período.</p>';
++      return;
++    }
++    resumo.innerHTML =
++      `<b>${dados.total_pedidos}</b> ${dados.total_pedidos === 1 ? "pedido" : "pedidos"} · ` +
++      `faturamento total <b>${moeda(dados.faturamento_total)}</b>`;
++    lista.innerHTML = dados.produtos.map(montarLinha).join("");
++  }
++
++  function montarLinha(p, indice) {
++    return `
++      <div class="produto-item">
++        <div class="produto-item__principal">
++          <b>${indice + 1}. ${escapeHtml(p.nome)}</b>
++          <span class="produto-item__preco">${moeda(p.faturamento)}</span>
++        </div>
++        <div class="produto-item__meta">
++          ${escapeHtml(p.categoria)} · ${p.quantidade_total} un. · em ${p.pedidos} ${p.pedidos === 1 ? "pedido" : "pedidos"}
++        </div>
++      </div>`;
++  }
++
++  function moeda(valor) {
++    return Number(valor).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
++  }
++});
